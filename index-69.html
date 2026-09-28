@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#13303A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IAT LPO">
+<title>IAT LPO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--frost:#EEF3F4;--paper:#fff;--ink:#13303A;--steel:#5B7079;--line:#D3DEE1;--chill:#1B6F82;--chill-d:#135564;
+--yolk:#E3A21A;--yolk-bg:#FFF4DC;--ok:#2F8F5B;--bad:#C2412D;--bad-bg:#FBE7E3;--wa:#1F8F4E;
+--cond:"Barlow Semi Condensed","Bahnschrift","Arial Narrow",system-ui,sans-serif;--body:"Barlow","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--frost);color:var(--ink);font:16px/1.45 var(--body);-webkit-text-size-adjust:100%}
+button,input,textarea{font:inherit;color:inherit}
+h1,h2{font-family:var(--cond);font-weight:700;margin:0}
+header{background:var(--ink);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
+header .in{max-width:760px;margin:0 auto;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+header h1{font-size:22px}header small{color:#A9C1C8;font-size:13px}
+header button{background:none;border:0;color:#A9C1C8;font-size:13px;cursor:pointer;text-decoration:underline}
+.wrap{max-width:760px;margin:0 auto;padding:12px 12px calc(40px + env(safe-area-inset-bottom))}
+.meta{color:var(--steel);font-size:14px}
+.drop{display:block;border:2px dashed #9FB7BE;border-radius:6px;padding:16px 12px;text-align:center;background:var(--paper);cursor:pointer}
+.drop b{font:700 21px var(--cond);display:block;margin-bottom:2px}.drop input{display:none}
+.drop.over{border-color:var(--chill);background:#F2F8F9}
+.card{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--chill);border-radius:6px;margin:10px 0;overflow:hidden}
+.card .hd{padding:8px 12px;border-bottom:1px solid var(--line)}
+.card .hd input{font:700 19px var(--cond);border:0;border-bottom:2px solid var(--line);padding:2px 0;width:100%;background:transparent;border-radius:0}
+.card .hd input:focus{outline:none;border-bottom-color:var(--chill)}
+.card .sub{font-size:12.5px;color:var(--steel);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.card .x{float:right;border:0;background:none;color:var(--steel);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 10px}
+table{width:100%;border-collapse:collapse}
+td{padding:4px 12px;border-top:1px solid #EDF2F3;vertical-align:middle}
+tr:first-child td{border-top:0}
+td input,td select{width:100%;border:1.5px solid var(--line);border-radius:5px;padding:5px 8px;background:#fff;font-size:15px}
+td select.unset{border-color:var(--yolk);background:var(--yolk-bg)}
+td.q{width:78px}td.q input{text-align:right;font:600 16px var(--cond)}
+.d{font-size:11px;line-height:1.25;color:var(--steel);margin-top:1px}
+.tag{display:inline-block;font:600 12px var(--cond);padding:1px 8px;border-radius:10px;background:#E6EEF0;color:var(--steel)}
+.tag.src{background:var(--ink);color:#fff}.tag.saved{background:#E1F0F3;color:var(--chill)}
+.tag.check{background:var(--yolk-bg);color:#8A5E00}.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.note{border-radius:6px;padding:10px 14px;margin:12px 0;font-size:15px}
+.note.bad{background:var(--bad-bg);border:1px solid #EDB5A9}.note.warn{background:var(--yolk-bg);border:1px solid #F0CF86}
+.out{margin-top:18px}
+textarea{width:100%;min-height:240px;border:1.5px solid var(--line);border-radius:6px;padding:12px;font:16px/1.55 var(--body);background:#fff;resize:vertical}
+.acts{display:flex;gap:8px;margin:8px 0}.acts .btn{flex:1}
+.btn{border:0;border-radius:6px;padding:14px 16px;font:600 18px var(--cond);cursor:pointer;background:var(--chill);color:#fff}
+.btn:hover{background:var(--chill-d)}.btn.wa{background:var(--wa)}.btn.ghost{background:none;color:var(--chill);border:1.5px solid var(--chill)}
+.btn.small{padding:6px 12px;font-size:15px}
+.toggle{display:flex;gap:10px;align-items:center;margin:8px 0;cursor:pointer}.toggle input{width:20px;height:20px;accent-color:var(--chill)}
+:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-3px}
+@keyframes s{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.thumb{display:block;max-width:110px;max-height:120px;margin-top:6px;border:1px solid var(--line);border-radius:4px}
+td input.unv{border-color:var(--bad);background:var(--bad-bg)}
+.neg{color:var(--bad)}
+.tag.sent{background:#E4F3EA;color:var(--ok)}
+.dense .card{margin:5px 0}
+.card .top{display:flex;align-items:center;gap:6px}
+.card .top input{flex:1;min-width:0}
+.mini{border:0;border-radius:4px;padding:3px 9px;font:600 13px var(--cond);cursor:pointer;background:var(--wa);color:#fff}
+.mini.ghost{background:none;color:var(--chill);border:1px solid var(--chill)}
+.card .x{float:none;padding:0 0 0 4px;font-size:20px}
+.imglink{font-size:12px;color:var(--chill);margin-right:8px}
+.dense .card .hd{padding:4px 8px 3px}
+.dense .card .hd input{font-size:16px;padding:0;border-bottom-width:1px}
+.dense .card .sub{margin-top:1px;gap:2px 8px;font-size:11.5px}
+.dense .tag{font-size:11px;padding:0 6px}
+.dense td{padding:0 6px;border-top:0}
+.dense td select,.dense td input{height:20px;padding:0 4px;font-size:13px;border-width:1px;border-radius:3px;margin:0;display:block}
+.dense tr+tr td select,.dense tr+tr td input{border-top-color:transparent;border-top-left-radius:0;border-top-right-radius:0}
+.dense td.q{width:58px}.dense td.q input{font-size:14px}
+.dense table{margin-bottom:3px}
+.dense .card .acts{margin:4px 0 6px}
+.dense .card .acts .btn{padding:4px 10px;font-size:14px}
+body:not(.showdesc) .d.desc,body:not(.showdesc) .d.raw{display:none}
+td.q .d{display:inline;margin-left:4px}
+#login{max-width:360px;margin:10vh auto;padding:0 16px}
+#login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0 10px;background:#fff}
+details.names{margin-top:28px;background:var(--paper);border:1px solid var(--line);border-radius:6px}
+details.names summary{padding:12px 14px;cursor:pointer;font:600 17px var(--cond)}
+.nm{display:flex;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid #EDF2F3;font-size:14px}
+.nm .t{flex:1;min-width:0;overflow-wrap:anywhere}.nm .t small{color:var(--steel);display:block}
+.nm button{border:0;background:none;color:var(--bad);cursor:pointer;font-size:14px}
+</style>
+</head>
+<body class="dense">
+<header><div class="in"><h1>IAT LPO</h1><small id="who"></small></div></header>
+
+<div id="login" hidden>
+  <h2 style="font-size:26px">Sign in</h2>
+  <p class="meta">Same account as the inventory app.</p>
+  <input id="em" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="btn" id="go" style="width:100%">Sign in</button>
+  <p class="meta" id="lmsg"></p>
+</div>
+
+<div id="app" hidden><div class="wrap">
+  <label class="toggle" style="margin:0 0 6px;font-size:14px"><input type="checkbox" id="showDesc"> Show the names from the PO</label>
+  <div id="mode"></div>
+  <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">GMG and Union Coop PDFs, MLS pictures · several at once is fine</span>
+    <input type="file" id="file" accept="application/pdf,.pdf,image/*" multiple></label>
+  <div id="errs"></div>
+  <div id="list"></div>
+  <div class="out" id="out" hidden>
+    <label class="toggle"><input type="checkbox" id="withPo"> Add the PO number under the name</label>
+    <p class="meta" style="margin:6px 0">All LPOs together:</p><textarea id="txt" readonly aria-label="WhatsApp text"></textarea>
+    <div class="acts"><button class="btn" id="copy">Copy all</button><button class="btn wa" id="wa">Send all</button></div>
+    <p class="meta">Send opens the share menu: pick WhatsApp Business, then the orders group. Names you fix are saved for everyone.</p>
+    <button class="btn ghost small" id="clear">Clear and start over</button>
+  </div>
+  <details class="names" id="names"><summary>Saved names</summary><div id="nlist"></div></details>
+</div></div>
+<datalist id="dlB"></datalist><datalist id="dlP"></datalist>
+<script type="module">
+// ================= SETTINGS =================
+// Paste the firebaseConfig object from the inventory app here to share saved names with the team.
+// Leave it as null to save names on this device only.
+const FIREBASE_CONFIG = null;
+// ============================================
+import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+
+// ===== LPO parsers (shared by the app and the node test) =====
+function buildLines(items){
+  // items: [{str,x,y,w}] (y grows downward). Group into lines.
+  const its=items.filter(i=>i.str&&i.str.trim()).sort((a,b)=>a.y-b.y||a.x-b.x);
+  const lines=[];
+  for(const it of its){
+    let L=lines.find(l=>Math.abs(l.y-it.y)<=2.5);
+    if(!L){L={y:it.y,items:[]};lines.push(L)}
+    L.items.push(it);
+  }
+  lines.sort((a,b)=>a.y-b.y);
+  lines.forEach(l=>{l.items.sort((a,b)=>a.x-b.x);l.text=l.items.map(i=>i.str.trim()).join(' ')});
+  return lines;
+}
+const findItem=(lines,re,from=0)=>{for(let i=from;i<lines.length;i++){const it=lines[i].items.find(t=>re.test(t.str));if(it)return{li:i,it}}return null};
+const inRange=(it,a,b)=>it.x>=a&&it.x<b;
+const num=s=>parseFloat(String(s).replace(/,/g,''));
+
+const UOM_RE=/^(KG|KGS|PCS|PC|EA|EACH|CTN|PKT|PACK|NOS|BOX|TRAY|TRY|UNIT)$/i;
+// Row-based table: a row starts with number codes; then description words; then UOM; then qty.
+// Lines in between that hold only words are the wrapped rest of the description.
+function readRows(lines,cfg){
+  const h=findItem(lines,cfg.headerRe);if(!h)return[];
+  const rows=[];let cur=null;
+  for(let i=h.li+1;i<lines.length;i++){
+    const L=lines[i];if(cfg.stopRe.test(L.text))break;
+    const toks=L.items.map(t=>t.str.trim()).filter(Boolean);
+    let k=0;const codes=[];
+    while(k<toks.length&&/^\d{5,14}$/.test(toks[k]))codes.push(toks[k++]);
+    if(codes.length>=cfg.minCodes){
+      cur={codes,desc:[],uom:'',qty:null};rows.push(cur);
+      for(;k<toks.length;k++){
+        const t=toks[k];
+        if(!cur.uom&&UOM_RE.test(t)&&k+1<toks.length&&/^[\d.,]+$/.test(toks[k+1])){cur.uom=t.toUpperCase();cur.qty=num(toks[k+1]);break}
+        cur.desc.push(t);
+      }
+    }else if(cur&&toks.every(t=>!/^[\d.,]+$/.test(t))){
+      cur.desc.push(...toks);
+    }
+  }
+  return rows.map(r=>({codes:r.codes,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty}))
+             .filter(r=>r.desc&&r.qty>0);
+}
+// Text under a header, limited to a horizontal band
+function textBelow(lines,headRe,xFrom,xTo,stopRe){
+  const h=findItem(lines,headRe);if(!h)return[];
+  const out=[];
+  for(let i=h.li+1;i<lines.length;i++){
+    if(stopRe&&stopRe.test(lines[i].text))break;
+    const s=lines[i].items.filter(t=>t.x>=xFrom(h.it,lines)&&t.x<xTo(h.it,lines)).map(t=>t.str.trim()).join(' ').trim();
+    if(s)out.push(s);
+  }
+  return out;
+}
+// GMG repeats the name in the address and glues them: "GEANT EXPRESS -ONE PARK" + "AVENUEGEANT EXPRESS -ONE PARK" ...
+function unglue(col){
+  const joined=col.join(' ').replace(/\s+/g,' ').trim();
+  const head=(col[0]||'').slice(0,8);
+  const i=head.length>=5?joined.indexOf(head,1):-1;
+  return (i>0?joined.slice(0,i):(col[0]||'')).trim();
+}
+// Row table where columns are found from header x positions (Union Coop style)
+function readByColumns(lines,cfg){
+  const h=findItem(lines,cfg.headerRe);if(!h)return[];
+  const hdr=lines.slice(h.li,h.li+3).flatMap(l=>l.items);
+  const hx=re=>{const it=hdr.find(t=>re.test(t.str.trim()));return it?it.x:null};
+  const xBrand=hx(cfg.brandRe),xQty=hx(cfg.qtyRe),xCost=hx(cfg.afterQtyRe);
+  if(xBrand==null||xQty==null)return[];
+  const rows=[];let cur=null;
+  for(let i=h.li+1;i<lines.length;i++){
+    const L=lines[i];if(cfg.stopRe.test(L.text))break;
+    const toks=L.items;
+    const isRow=toks.length>3&&/^\d{1,3}$/.test(toks[0].str.trim())&&/^\d{5,8}$/.test(toks[1].str.trim());
+    if(isRow){
+      const codeEnd=toks[2]&&/^\d{4,14}$/.test(toks[2].str.trim())?toks[2].x+20:toks[1].x+20;
+      cur={code:toks[1].str.trim(),desc:[],uom:'KG',qty:null,codeEnd};rows.push(cur);
+      for(const t of toks){
+        const v=t.str.trim();
+        if(t.x>codeEnd&&t.x<xBrand-50)cur.desc.push(v);
+        else if(t.x>=xQty-15&&t.x<(xCost??xQty+50)-5&&cur.qty==null&&/^[\d.,]+$/.test(v))cur.qty=num(v);
+      }
+      const u=toks.filter(t=>t.x>xBrand&&t.x<xQty-15&&UOM_RE.test(t.str.trim()));
+      if(u.length)cur.uom=u[u.length-1].str.trim().toUpperCase();
+    }else if(cur){
+      const words=toks.filter(t=>t.x>cur.codeEnd&&t.x<xBrand-50).map(t=>t.str.trim());
+      if(words.length&&toks.every(t=>t.x>cur.codeEnd&&t.x<xBrand-50))cur.desc.push(...words);
+    }
+  }
+  return rows.map(r=>({code:r.code,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty})).filter(r=>r.desc&&r.qty>0);
+}
+
+const PARSERS=[
+ {id:'GMG',name:'GMG',
+  detect:t=>/GMG/i.test(t)&&/Purchase Order/i.test(t),
+  parse(lines,flat){
+    const po=(flat.match(/Order No\.?.*?\b(\d{6,})\b/)||[])[1]||'';
+    const delivery=(flat.match(/Delivery Date.*?\b(\d{2}[./]\d{2}[./]\d{4})/)||[])[1]||'';
+    const vend=findItem(lines,/TRADING/i);
+    const col=textBelow(lines,/^Delivered To/i,h=>h.x-45,()=>vend?vend.it.x-5:h.x+90,/Delivery Date/i);
+    const branch=unglue(col);
+    const rows=readRows(lines,{headerRe:/^Barcode$/i,stopRe:/^Total\b/i,minCodes:2});
+    return {po,delivery,branch,lines:rows.map(r=>({code:r.codes[1]||r.codes[0]||'',desc:r.desc,uom:r.uom||'KG',qty:r.qty}))};
+  }},
+
+ {id:'UNION',name:'Union Coop',
+  detect:t=>/BRANCH ORDER FORM/i.test(t)&&/BOF/i.test(t),
+  parse(lines,flat){
+    const po=((flat.match(/\bBP\s*(\d{6,})/)||[])[1])||'';
+    const delivery=(flat.match(/Requested Delivery Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i)||[])[1]||'';
+    const bl=lines.find(l=>/\bBranch\b/.test(l.text)&&/\b\d{5}\b/.test(l.text)&&!/ORDER FORM/i.test(l.text))||lines.find(l=>/\d{5}\s+[A-Za-z].*Branch/.test(l.text));
+    const m=bl&&bl.text.match(/\b\d{5}\s+(.+?Branch)\b/i);
+    const branch=m?m[1].trim():'';
+    const rows=readByColumns(lines,{headerRe:/^Sr\.?$/i,brandRe:/^Brand$/i,qtyRe:/^Quantity$/i,afterQtyRe:/^G \/ Cost/i,
+      stopRe:/^(TOTAL|.*Delivery Should be made|.*TOTAL\s+[\d,.]+)/i});
+    return {po,delivery,branch,lines:rows};
+  }},
+];
+
+const PRODUCT_RULES=[
+ [['TENDER'],'tender breast'],
+ [['BONELESS','THIGH','S/LES'],'thigh bl/sl'],[['BONELESS','THIGH','SKINLESS'],'thigh bl/sl'],
+ [['BONELESS','THIGH'],'thigh bl/so'],[['BONELESS','LEG'],'whole legs bl/so'],
+ [['WHOLE','LEG'],'whole legs'],[['DRUM'],'drumsticks'],[['THIGH'],'thigh'],[['WING'],'wings'],
+ [['LIVER'],'liver'],[['GIZZ'],'gizzard'],[['HEART'],'heart'],[['BREAST'],'breast'],
+ [['MINCE'],'minced'],[['BONE'],'bone'],[['WHOLE'],'chicken']];
+function suggestProduct(desc){
+  const d=desc.toUpperCase();
+  for(const[w,s]of PRODUCT_RULES)if(w.every(x=>d.includes(x)))return s+(/\b500\s*G/.test(d)?' 500g':'');
+  return '';
+}
+function suggestBranch(raw,source){
+  let r=raw;
+  if(source==='UNION')r='Union '+raw.replace(/\s*Branch\s*$/i,'');
+  if(source==='MLS')r='M L S '+raw.replace(/([a-z])([A-Z])/g,'$1 $2');
+  if(source==='GMG')r=raw.replace(/^GEANT EXPRESS\s*-\s*/i,'Geant - ').replace(/^GEANT\s*-\s*/i,'Geant - ');
+  return r.replace(/\s*[-–]\s*/g,' - ').split(/\s+/)
+    .map(w=>w==='-'||['MLS','GMG','JLT','JVC','UAE','DIP','JBR'].includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+}
+function parseLpo(items){
+  const lines=buildLines(items);const flat=lines.map(l=>l.text).join(' ');
+  const p=PARSERS.find(p=>p.detect(flat));
+  if(!p)return{error:'This LPO layout is not known yet (only '+PARSERS.map(p=>p.name).join(', ')+').'};
+  const r=p.parse(lines,flat);
+  if(!r.lines.length)return{error:'No product lines found in this '+p.name+' LPO.'};
+  return{source:p.id,...r};
+}
+
+const BASE_PRODUCTS=['chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
+ 'wings','liver','gizzard','heart','minced','bone','tender breast',
+ 'breast 500g','thigh 500g','wings 500g','drumsticks 500g','chicken 1000g'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const q2=n=>String(Math.round(n*1000)/1000);
+
+/* ---------- saved names store (Firestore or this device) ---------- */
+const names={branches:{},products:{}};
+let fb=null;
+const LS='iat_lpo_names';
+async function initStore(){
+  if(!FIREBASE_CONFIG){
+    try{Object.assign(names,JSON.parse(localStorage.getItem(LS))||{})}catch(e){}
+    $('#mode').innerHTML='<div class="note warn">Names are saved on this device only. Add the Firebase settings to share them with the team.</div>';
+    return true;
+  }
+  const V='10.12.2';
+  const [{initializeApp},A,F]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)]);
+  const app=initializeApp(FIREBASE_CONFIG,'iat-lpo');
+  fb={auth:A.getAuth(app),db:F.getFirestore(app),A,F};
+  return new Promise(res=>A.onAuthStateChanged(fb.auth,u=>{
+    if(!u){showLogin();res(false);return}
+    $('#who').innerHTML=`${esc(u.email)} <button id="out1">Sign out</button>`;
+    $('#out1').onclick=()=>A.signOut(fb.auth);
+    for(const k of ['branches','products'])
+      F.onSnapshot(F.doc(fb.db,'lpo_names',k),s=>{names[k]=(s.exists()&&s.data().m)||{};refreshLists();renderNames()},
+        e=>{$('#mode').innerHTML=`<div class="note bad">Can't read saved names: ${esc(e.message)}</div>`});
+    showApp();res(true);
+  }));
+}
+async function saveName(kind,key,val){
+  names[kind][key]=val;
+  if(!fb){localStorage.setItem(LS,JSON.stringify(names));return}
+  await fb.F.setDoc(fb.F.doc(fb.db,'lpo_names',kind),{m:{[key]:val}},{merge:true});
+}
+async function removeName(kind,key){
+  delete names[kind][key];
+  if(!fb){localStorage.setItem(LS,JSON.stringify(names));return}
+  await fb.F.updateDoc(fb.F.doc(fb.db,'lpo_names',kind),new fb.F.FieldPath('m',key),fb.F.deleteField());
+}
+
+/* ---------- login ---------- */
+function showLogin(){$('#app').hidden=true;$('#login').hidden=false;$('#who').textContent=''}
+function showApp(){$('#login').hidden=true;$('#app').hidden=false}
+$('#go').onclick=async()=>{
+  $('#lmsg').textContent='';
+  try{await fb.A.signInWithEmailAndPassword(fb.auth,$('#em').value.trim(),$('#pw').value)}
+  catch(e){$('#lmsg').textContent='Wrong email or password.'}
+};
+$('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('#go').click()});
+
+/* ---------- reading PDFs ---------- */
+async function pdfItems(file){
+  const doc=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const items=[];let off=0;
+  for(let p=1;p<=doc.numPages;p++){
+    const pg=await doc.getPage(p),vp=pg.getViewport({scale:1}),tc=await pg.getTextContent();
+    tc.items.forEach(i=>items.push({str:i.str,x:i.transform[4],y:off+vp.height-i.transform[5],w:i.width}));
+    off+=vp.height+50;
+  }
+  return items;
+}
+
+/* ---------- MLS: purchase orders that arrive as images (OCR) ---------- */
+let ocrW=null;
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Could not load the image reader. Check the internet connection.'));document.head.appendChild(s)})}
+async function ocr(){
+  if(!ocrW){
+    if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
+    ocrW=await Tesseract.createWorker('eng');
+  }
+  return ocrW;
+}
+function prep(bmp,{sx=0,sy=0,sw=bmp.width,sh=bmp.height,scale=1,thr=0,auto=false,pad=0}={}){
+  sx=Math.max(0,Math.round(sx));sy=Math.max(0,Math.round(sy));sw=Math.round(Math.min(sw,bmp.width-sx));sh=Math.round(Math.min(sh,bmp.height-sy));
+  const W=Math.round(sw*scale),H=Math.round(sh*scale),c=document.createElement('canvas');
+  c.width=W+2*pad;c.height=H+2*pad;const g=c.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  g.drawImage(bmp,sx,sy,sw,sh,pad,pad,W,H);
+  const d=g.getImageData(0,0,c.width,c.height),p=d.data;let mn=255,mx=0;
+  for(let i=0;i<p.length;i+=4){const v=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];p[i]=v;if(v<mn)mn=v;if(v>mx)mx=v}
+  for(let i=0;i<p.length;i+=4){let v=p[i];if(auto&&mx>mn)v=(v-mn)*255/(mx-mn);if(thr)v=v>thr?255:0;p[i]=p[i+1]=p[i+2]=v}
+  g.putImageData(d,0,0);return c;
+}
+function wordsOf(data){
+  if(data.words&&data.words.length)return data.words;
+  const out=[];(data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(pa=>(pa.lines||[]).forEach(l=>(l.words||[]).forEach(w=>out.push(w)))));
+  return out;
+}
+function numCands(s){
+  s=(s||'').replace(/[,\s]/g,'');const out=[];
+  if(/^\d+(\.\d+)?$/.test(s))out.push(parseFloat(s));
+  const d=s.replace(/\./g,'');
+  if(/^\d+$/.test(d))for(const k of[2,3])if(d.length>k)out.push(parseFloat(d.slice(0,-k)+'.'+d.slice(-k)));
+  return out;
+}
+async function readMlsImage(file,status){
+  const bmp=await createImageBitmap(file),Wd=bmp.width,Ht=bmp.height,S=3;
+  const w=await ocr();
+  status('Reading the page…');
+  await w.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:''});
+  const page=await w.recognize(prep(bmp,{scale:S,auto:true}));
+  const text=page.data.text||'';
+  const W=wordsOf(page.data).map(x=>({t:(x.text||'').trim(),x:x.bbox.x0/S,y:x.bbox.y0/S})).filter(x=>x.t);
+  if(!/FOODSTUFF|MLS|M L S|misuae|mlsuae/i.test(text))return{error:'This image is not an MLS purchase order.'};
+  const po=((text.match(/Document\s*N\w*\.?\s*:?\s*([\d,.]{7,})/i)||[])[1]||'').replace(/\D/g,'');
+  const date=(text.match(/Document\s*Date\s*:?\s*([0-9]{1,2}-[A-Za-z]{3}-\d{4})/i)||[])[1]||'';
+  // branch: first text line inside the Remarks box (under "Payment terms")
+  const pay=W.find(v=>/^PAYMENT/i.test(v.t)&&v.x<0.3*Wd),py=pay?pay.y:0.78*Ht;
+  const cand=W.filter(v=>v.y>py+35&&v.y<py+130&&v.x<0.42*Wd&&/[A-Za-z]{2}/.test(v.t)&&!/^remark/i.test(v.t)).sort((a,b)=>a.y-b.y||a.x-b.x);
+  let branch='';
+  if(cand.length){const y1=cand[0].y;branch=cand.filter(v=>Math.abs(v.y-y1)<6).sort((a,b)=>a.x-b.x).map(v=>v.t.replace(/[^A-Za-z0-9&'-]/g,'')).join(' ').trim()}
+  // table grid from the pixels: horizontal lines -> rows, vertical lines -> columns
+  const gc=prep(bmp),gd=gc.getContext('2d').getImageData(0,0,Wd,Ht).data;
+  const px=(x,y)=>gd[(y*Wd+x)*4];
+  const groups=m=>{const g=[];m.forEach((v,i)=>{if(!v)return;if(g.length&&i-g[g.length-1][1]<=2)g[g.length-1][1]=i;else g.push([i,i])});return g};
+  const x8=Math.round(.08*Wd),x92=Math.round(.92*Wd);
+  const hl=groups(Array.from({length:Ht},(_,y)=>{let n=0;for(let x=x8;x<x92;x++)if(px(x,y)<200)n++;return n/(x92-x8)>0.6}));
+  const totY=(hl.find(([s,e])=>e-s>=8&&s>0.5*Ht)||[Ht])[0];
+  const L=hl.filter(([s])=>s>0.3*Ht&&s<totY).concat([[totY,totY]]);
+  const rows=[];for(let i=0;i<L.length-1;i++)if(L[i+1][0]-L[i][1]>35)rows.push([L[i][1],L[i+1][0]]);
+  if(!rows.length)return{error:'No product lines found in this MLS image.'};
+  const colsOf=(y0,y1)=>{const g=groups(Array.from({length:Wd},(_,x)=>{let n=0;for(let y=y0+2;y<y1-2;y++)if(px(x,y)<200)n++;return n/(y1-y0-4)>0.8}));
+    const c=[];for(let i=0;i<g.length-1;i++)c.push([g[i][1],g[i+1][0]]);return c};
+  let COLS=colsOf(rows[0][0],rows[rows.length-1][1]);
+  if(COLS.length<6)COLS=rows.map(([a,b])=>colsOf(a,b)).sort((a,b)=>b.length-a.length)[0];
+  await w.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789.,'});
+  const readCell=async([x0,x1],y0,y1,firstLine,scale=6,thr=180)=>{
+    x0+=3;x1-=3;y0+=3;y1-=3;const r=[];
+    for(let y=y0;y<y1;y++){for(let x=x0;x<x1;x++)if(px(x,y)<150){r.push(y);break}}
+    if(!r.length)return'';
+    let ya=r[0],yb=r[r.length-1];
+    if(firstLine)for(let k=1;k<r.length;k++)if(r[k]-r[k-1]>2){yb=r[k-1];break}
+    return(await w.recognize(prep(bmp,{sx:x0,sy:ya-3,sw:x1-x0,sh:yb-ya+6,scale,thr,pad:30}))).data.text.trim();
+  };
+  const lines=[];
+  for(let k=0;k<rows.length;k++){
+    status(`Checking line ${k+1} of ${rows.length}…`);
+    const [y0,y1]=rows[k],C=COLS;
+    if(C.length<6){lines.push({code:'',desc:'line '+(k+1),uom:'PCS',qty:0,unverified:true});continue}
+    const name=W.filter(v=>v.y>=y0-2&&v.y<y1&&v.x>=C[2][0]-4&&v.x<C[2][1]).sort((a,b)=>a.y-b.y||a.x-b.x).map(v=>v.t).join(' ')||('line '+(k+1));
+    let qty=null,ok=false,firstQ=[];
+    for(const[sc,th]of[[6,180],[4,160],[8,200],[5,140],[3,170]]){
+      const q=numCands(await readCell(C[3],y0,y1,false,sc,th)),r=numCands(await readCell(C[4],y0,y1,true,sc,th)),T=numCands(await readCell(C[5],y0,y1,false,sc,th));
+      if(!firstQ.length)firstQ=q;
+      for(const a of q)for(const b of r)for(const c of T)if(!ok&&a>0&&Math.abs(a*b-c)<0.02){qty=a;ok=true}
+      if(ok)break;
+    }
+    if(qty==null)qty=firstQ.find(a=>a>0&&a<500)||0;
+    lines.push({code:'',desc:name,uom:'PCS',qty,unverified:!ok});
+  }
+  await w.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:''});
+  return{source:'MLS',po,delivery:date,branch,lines,image:URL.createObjectURL(file)};
+}
+
+let lpos=[];
+const nkey=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+async function addFiles(files){
+  const errs=[];const st=m=>$('#errs').innerHTML=`<p class="meta"><span class="spin"></span> ${esc(m)}</p>`;
+  let n=0;
+  for(const f of files){
+    n++;st(`Reading ${n} of ${files.length}…`);
+    try{
+      const isImg=/^image\//.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name);
+      const r=isImg?await readMlsImage(f,m=>st(`File ${n} of ${files.length}: ${m}`)):parseLpo(await pdfItems(f));
+      if(r.error){errs.push(`${f.name}: ${r.error}`);continue}
+      if(lpos.some(x=>x.source===r.source&&x.po&&x.po===r.po)){errs.push(`${f.name}: PO ${r.po} is already in the list.`);continue}
+      const bKey=`${r.source}|${nkey(r.branch)}`;
+      r.bKey=bKey;r.bSaved=!!names.branches[bKey];r.name=names.branches[bKey]||suggestBranch(r.branch,r.source);
+      r.lines.forEach(l=>{
+        let sug=suggestProduct(l.desc);
+        if(r.source==='MLS'&&sug)sug=sug.replace(/ 500g$/,'')+(sug==='chicken'?' 1000g':' 500g');
+        l.key=r.source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${r.source}|${l.code||nkey(l.desc)}`;
+        l.saved=!!names.products[l.key];l.short=names.products[l.key]||sug;});
+      r.file=f.name;lpos.push(r);
+    }catch(e){errs.push(`${f.name}: can't read this PDF (${e.message}).`)}
+  }
+  $('#errs').innerHTML=errs.length?`<div class="note bad">${errs.map(esc).join('<br>')}</div>`:'';
+  render();
+}
+$('#file').onchange=()=>{addFiles([...$('#file').files]);$('#file').value=''};
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>addFiles([...e.dataTransfer.files].filter(f=>/\.(pdf|jpe?g|png|webp)$/i.test(f.name))));
+
+/* ---------- screen ---------- */
+function render(){
+  $('#list').innerHTML=lpos.map((r,i)=>`<div class="card"><div class="hd">
+    <div class="top"><input list="dlB" data-b="${i}" value="${esc(r.name)}" aria-label="Customer name">
+      <button class="mini ghost" data-cp="${i}">Copy</button><button class="mini wa" data-wa="${i}">Send</button><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>
+    <div class="sub"><span class="tag src">${esc(r.source)}</span><span>PO ${esc(r.po)}</span><span>${esc(r.delivery)}</span>
+      ${r.bSaved?'':'<span class="tag check">check name</span>'}${r.sent?'<span class="tag sent">sent</span>':''}</div>
+    <div class="d raw">${esc(r.branch)}</div>
+    ${r.image?`<a href="${r.image}" target="_blank" rel="noopener" class="imglink">View picture</a>`:''}
+    ${r.lines.some(l=>l.unverified)?'<div class="note bad" style="margin:4px 0 0;padding:4px 8px;font-size:13px">Red quantities were not confirmed. Check them against the picture.</div>':''}</div>
+    <table>${r.lines.map((l,j)=>`<tr><td><select data-p="${i}:${j}" class="${l.short?'':'unset'}" aria-label="Product">${prodOpts(l.short)}</select>
+      <div class="d desc">${esc(l.desc)}</div>${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}</td>
+      <td class="q"><input inputmode="decimal" data-q="${i}:${j}" value="${q2(l.qty)}" aria-label="Quantity" class="${l.unverified?'unv':''}"></td></tr>`).join('')}</table></div>`).join('');
+  $('#out').hidden=!lpos.length;
+  document.querySelectorAll('[data-b]').forEach(e=>e.oninput=()=>{lpos[+e.dataset.b].name=e.value;upd()});
+  document.querySelectorAll('[data-p]').forEach(e=>e.onchange=()=>{
+    const[i,j]=e.dataset.p.split(':'),l=lpos[i].lines[j];
+    if(e.value==='__other'){const v=prompt('Product name as you write it in the group:',l.short||'');if(v&&v.trim())l.short=v.trim();render();return}
+    l.short=e.value;e.classList.toggle('unset',!e.value);upd()});
+  document.querySelectorAll('[data-q]').forEach(e=>e.oninput=()=>{const[i,j]=e.dataset.q.split(':');const l=lpos[i].lines[j];l.qty=parseFloat(e.value)||0;l.unverified=false;e.classList.remove('unv');upd()});
+  document.querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{lpos.splice(+e.dataset.rm,1);render()});
+  document.querySelectorAll('[data-cp]').forEach(e=>e.onclick=()=>{copyText(msg(lpos[+e.dataset.cp]),e,'Copy');remember()});
+  document.querySelectorAll('[data-wa]').forEach(e=>e.onclick=async()=>{
+    const r=lpos[+e.dataset.wa];
+    if(r.lines.some(l=>l.unverified)&&!confirm('Some quantities were not confirmed from the image. Did you check them?'))return;
+    remember();if(await shareText(msg(r))){r.sent=true;render()}});
+  upd();
+}
+const unitOf=u=>/^KGS?$/.test(u)?'kg':/^(PCS|PC|EA|EACH|NOS|UNIT)$/.test(u)?'':u.toLowerCase();
+function msg(r){
+  const po=$('#withPo').checked;
+  return [r.name.trim()+(po&&r.po?`\nPO ${r.po}`:''),'',
+    ...r.lines.filter(l=>l.short.trim()&&l.qty>0).map(l=>`${q2(l.qty)} ${unitOf(l.uom)?unitOf(l.uom)+' ':''}${l.short.trim()}`)].join('\n');
+}
+function prodOpts(cur){
+  const list=[...new Set([...BASE_PRODUCTS,...Object.values(names.products)])].sort();
+  if(cur&&!list.includes(cur))list.unshift(cur);
+  return (cur?'':'<option value="" selected>Choose product…</option>')+
+    list.map(n=>`<option value="${esc(n)}"${n===cur?' selected':''}>${esc(n)}</option>`).join('')+
+    '<option value="__other">Other (type it)…</option>';
+}
+function markSaved(){document.querySelectorAll('.tag.check').forEach(t=>{t.className='tag saved';t.textContent='saved'})}
+function upd(){$('#txt').value=lpos.map(msg).join('\n\n\n')}
+async function copyText(t,btn,label){
+  let ok=false;
+  try{await navigator.clipboard.writeText(t);ok=true}catch(e){}
+  if(!ok){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');ta.remove()}
+  btn.textContent=ok?'Copied':'Copy failed';setTimeout(()=>btn.textContent=label,1800);
+}
+$('#withPo').onchange=upd;
+$('#showDesc').onchange=()=>document.body.classList.toggle('showdesc',$('#showDesc').checked);
+async function remember(){
+  const jobs=[];
+  lpos.forEach(r=>{
+    if(r.name.trim()&&names.branches[r.bKey]!==r.name.trim())jobs.push(saveName('branches',r.bKey,r.name.trim()));
+    r.lines.forEach(l=>{if(l.short.trim()&&names.products[l.key]!==l.short.trim())jobs.push(saveName('products',l.key,l.short.trim()))});
+  });
+  try{await Promise.all(jobs)}catch(e){$('#errs').innerHTML=`<div class="note bad">Names not saved: ${esc(e.message)}</div>`;return}
+  lpos.forEach(r=>{r.bSaved=true;r.lines.forEach(l=>l.saved=!!l.short.trim())});
+  if(!fb){refreshLists();renderNames()}
+  markSaved();
+}
+$('#copy').onclick=()=>{copyText($('#txt').value,$('#copy'),'Copy all');remember()};
+$('#wa').onclick=async()=>{
+  if(lpos.some(r=>r.lines.some(l=>l.unverified))&&!confirm('Some quantities were not confirmed from the image. Did you check them?'))return;
+  remember();if(await shareText($('#txt').value)){lpos.forEach(r=>r.sent=true);render()}};
+async function shareText(t){
+  if(navigator.share){try{await navigator.share({text:t});return true}catch(e){if(e.name==='AbortError')return false}}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');return true;
+}
+$('#clear').onclick=()=>{lpos=[];$('#errs').innerHTML='';render()};
+
+/* ---------- saved names ---------- */
+function refreshLists(){
+  $('#dlB').innerHTML=[...new Set(Object.values(names.branches))].sort().map(n=>`<option value="${esc(n)}">`).join('');
+  $('#dlP').innerHTML=[...new Set([...BASE_PRODUCTS,...Object.values(names.products)])].sort().map(n=>`<option value="${esc(n)}">`).join('');
+}
+function renderNames(){
+  const row=(kind,k,v)=>{const[src,raw]=k.split('|');
+    return `<div class="nm"><div class="t"><b>${esc(v)}</b><small>${esc(src)} · ${esc(raw)}</small></div><button data-del="${kind}" data-k="${esc(k)}">Forget</button></div>`};
+  const b=Object.entries(names.branches),p=Object.entries(names.products);
+  $('#nlist').innerHTML=(b.length||p.length)?
+    `<div class="nm"><b>Customers</b></div>`+b.map(([k,v])=>row('branches',k,v)).join('')+
+    `<div class="nm"><b>Products</b></div>`+p.map(([k,v])=>row('products',k,v)).join(''):
+    '<div class="nm meta">Nothing saved yet. Names are saved when you copy or send a text.</div>';
+  document.querySelectorAll('[data-del]').forEach(e=>e.onclick=async()=>{
+    if(!confirm('Forget this saved name?'))return;
+    await removeName(e.dataset.del,e.dataset.k);if(!fb)renderNames()});
+}
+
+(async()=>{
+  try{if(await initStore()){showApp();refreshLists();renderNames()}}
+  catch(e){document.body.insertAdjacentHTML('beforeend',`<div class="wrap"><div class="note bad">Could not start: ${esc(e.message)}</div></div>`)}
+})();
+</script>
+</body>
+</html>
