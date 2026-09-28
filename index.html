@@ -104,6 +104,9 @@ details.gl summary{cursor:pointer;font-weight:600;color:var(--chill)}
 .additem{border:0;background:none;color:var(--chill);font:600 13px var(--cond);cursor:pointer;padding:2px 8px 6px}
 .dense td.sz{width:62px;padding:0 0 0 4px}
 .dense td.sz select{width:62px;padding:0 2px;font-size:13px}
+.drop .pick{display:flex;gap:8px;margin:8px 0 6px}
+.drop .pick .btn{flex:1;padding:10px 8px;font-size:16px;cursor:pointer;text-align:center}
+.drop .pick input{display:none}
 #login{max-width:360px;margin:10vh auto;padding:0 16px}
 #login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0 10px;background:#fff}
 details.names{margin-top:28px;background:var(--paper);border:1px solid var(--line);border-radius:6px}
@@ -128,8 +131,8 @@ details.names summary{padding:12px 14px;cursor:pointer;font:600 17px var(--cond)
 <div id="app" hidden><div class="wrap">
   <label class="toggle" style="margin:0 0 6px;font-size:14px"><input type="checkbox" id="showDesc"> Show the names from the PO</label>
   <div id="mode"></div>
-  <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">GMG, Union Coop, Beast Meat, Meat Avenue, Food Fabrique PDFs · MLS pictures · several at once is fine</span>
-    <input type="file" id="file" accept="application/pdf,.pdf,image/*" multiple></label>
+  <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">PDFs or MLS pictures · several at once is fine</span>
+    <input type="file" id="file" multiple></label>
   <div id="errs"></div>
   <div id="list"></div>
   <div class="out" id="out" hidden>
@@ -375,7 +378,7 @@ function parseLpo(items){
 
 const BASE_PRODUCTS=['chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
  'wings','liver','gizzard','heart','minced','bone','tender breast',
- 'breast 500g','thigh 500g','wings 500g','drumsticks 500g','chicken 1000g','chilled breast'];
+ 'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast'];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const q2=n=>String(Math.round(n*1000)/1000);
@@ -501,9 +504,11 @@ async function readMlsImage(file,status){
   const rows=[];for(let i=0;i<L.length-1;i++)if(L[i+1][0]-L[i][1]>35)rows.push([L[i][1],L[i+1][0]]);
   if(!rows.length)return{error:'No product lines found in this MLS image.'};
   const colsOf=(y0,y1)=>{const g=groups(Array.from({length:Wd},(_,x)=>{let n=0;for(let y=y0+2;y<y1-2;y++)if(px(x,y)<200)n++;return n/(y1-y0-4)>0.8}));
-    const c=[];for(let i=0;i<g.length-1;i++)c.push([g[i][1],g[i+1][0]]);return c};
+    const c=[];for(let i=0;i<g.length-1;i++)if(g[i+1][0]-g[i][1]>12)c.push([g[i][1],g[i+1][0]]);return c};
   let COLS=colsOf(rows[0][0],rows[rows.length-1][1]);
   if(COLS.length<6)COLS=rows.map(([a,b])=>colsOf(a,b)).sort((a,b)=>b.length-a.length)[0];
+  {const ni=COLS.reduce((b,c,i)=>(c[1]-c[0])>(COLS[b][1]-COLS[b][0])?i:b,0);
+   COLS=ni>=2&&COLS.length>=ni+4?[COLS[ni-2],COLS[ni-1],COLS[ni],COLS[ni+1],COLS[ni+2],COLS[ni+3]]:[];}
   await w.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789.,'});
   const readCell=async([x0,x1],y0,y1,firstLine,scale=6,thr=180)=>{
     x0+=3;x1-=3;y0+=3;y1-=3;const r=[];
@@ -536,6 +541,15 @@ async function readMlsImage(file,status){
 let lpos=[];
 const nkey=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const SOURCES=[['GMG','GMG'],['UNION','Union Coop'],['MLS','MLS'],['BEAST','Beast Meat'],['TMA','Meat Avenue'],['FF','Food Fabrique']];
+// MLS: packed in 500 g trays (PO quantity is in kg); drumsticks and thigh are always skinless
+function mlsName(base){
+  if(!base)return base;
+  const b=base.replace(/ 500g$/,'');
+  if(b==='chicken')return 'chicken 1000g';
+  if(b==='drumsticks')return 'drumsticks sl 500';
+  if(b==='thigh')return 'thigh sl 500';
+  return b+' 500';
+}
 function suggestFor(desc,source){
   const d=String(desc||'').toUpperCase().replace(/BONE\s+LESS/g,'BONELESS').replace(/SKIN\s+LESS/g,'SKINLESS');
   for(const r of (names.rules[source]||[])){
@@ -543,7 +557,7 @@ function suggestFor(desc,source){
     if(ws.length&&ws.every(x=>d.includes(x)))return r.p;
   }
   let s=suggestProduct(desc);
-  if(source==='MLS'&&s)s=s.replace(/ 500g$/,'')+(s==='chicken'?' 1000g':' 500g');
+  if(source==='MLS')s=mlsName(s);
   return s;
 }
 const prodKey=(source,l,sug)=>source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${source}|${l.code||nkey(l.desc)}`;
@@ -553,7 +567,9 @@ async function addFiles(files){
   for(const f of files){
     n++;st(`Reading ${n} of ${files.length}…`);
     try{
-      const isImg=/^image\//.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name);
+      const isImg=/^image\//.test(f.type)||/\.(jpe?g|png|webp|heic)$/i.test(f.name);
+      const isPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
+      if(!isImg&&!isPdf){errs.push(`${f.name}: not a PDF or a picture.`);continue}
       const r=isImg?await readMlsImage(f,m=>st(`File ${n} of ${files.length}: ${m}`)):parseLpo(await pdfItems(f));
       if(r.error){errs.push(`${f.name}: ${r.error}`);continue}
       if(lpos.some(x=>x.source===r.source&&x.po&&x.po===r.po)){errs.push(`${f.name}: PO ${r.po} is already in the list.`);continue}
@@ -561,7 +577,8 @@ async function addFiles(files){
       r.bKey=bKey;r.bSaved=!!names.branches[bKey];r.name=names.branches[bKey]||suggestBranch(r.branch,r.source);
       r.lines.forEach(l=>{
         const base=suggestProduct(l.desc);let sugB=base;
-        if(r.source==='MLS'&&base)sugB=base.replace(/ 500g$/,'')+(base==='chicken'?' 1000g':' 500g');
+        if(r.source==='MLS'){sugB=mlsName(base);
+          if(!l.trayDone&&base&&base.replace(/ 500g$/,'')!=='chicken'){l.qty=Math.round(l.qty*2*1000)/1000;l.trayDone=true}}
         l.key=prodKey(r.source,l,sugB);
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
