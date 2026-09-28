@@ -107,6 +107,7 @@ details.gl summary{cursor:pointer;font-weight:600;color:var(--chill)}
 .drop .pick{display:flex;gap:8px;margin:8px 0 6px}
 .drop .pick .btn{flex:1;padding:10px 8px;font-size:16px;cursor:pointer;text-align:center}
 .drop .pick input{display:none}
+.newitem{font-size:11.5px;color:#8A5E00;background:var(--yolk-bg);border-radius:3px;padding:1px 5px;margin:1px 0 2px}
 #login{max-width:360px;margin:10vh auto;padding:0 16px}
 #login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0 10px;background:#fff}
 details.names{margin-top:28px;background:var(--paper);border:1px solid var(--line);border-radius:6px}
@@ -187,15 +188,16 @@ function readRows(lines,cfg){
     const toks=L.items.map(t=>t.str.trim()).filter(Boolean);
     let k=0;const codes=[];
     while(k<toks.length&&/^\d{5,14}$/.test(toks[k]))codes.push(toks[k++]);
+    if(/^Page\s*:?\s*\d/i.test(L.text)||/Purchase Order|Order No\.|Delivered To|^Barcode\b/i.test(L.text)){cur=null;continue}
     if(codes.length>=cfg.minCodes){
-      cur={codes,desc:[],uom:'',qty:null};rows.push(cur);
+      cur={codes,desc:[],uom:'',qty:null,lastY:L.y};rows.push(cur);
       for(;k<toks.length;k++){
         const t=toks[k];
         if(!cur.uom&&UOM_RE.test(t)&&k+1<toks.length&&/^[\d.,]+$/.test(toks[k+1])){cur.uom=t.toUpperCase();cur.qty=num(toks[k+1]);break}
         cur.desc.push(t);
       }
-    }else if(cur&&toks.every(t=>!/^[\d.,]+$/.test(t))){
-      cur.desc.push(...toks);
+    }else if(cur&&L.y-cur.lastY<18&&toks.length<=6&&toks.every(t=>!/^[\d.,]+$/.test(t))){
+      cur.desc.push(...toks);cur.lastY=L.y;
     }
   }
   return rows.map(r=>({codes:r.codes,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty}))
@@ -478,7 +480,7 @@ function numCands(s){
   return out;
 }
 async function readMlsImage(file,status){
-  const bmp=await createImageBitmap(file),Wd=bmp.width,Ht=bmp.height,S=3;
+  const bmp=await createImageBitmap(file),Wd=bmp.width,Ht=bmp.height,S=Math.max(1,Math.min(3,Math.round(1800/Wd)));
   const w=await ocr();
   status('Reading the page…');
   await w.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:''});
@@ -538,6 +540,112 @@ async function readMlsImage(file,status){
   return{source:'MLS',po,delivery:date,branch,lines,image:URL.createObjectURL(file)};
 }
 
+
+/* ---------- Union Coop: photos of branch order forms (OCR) ---------- */
+const U_ITEMS={'642313':['FRESH WHOLE CHICKEN',[18]],'642314':['FRESH CHICKEN BREAST',[40]],'642315':['FRESH CHICKEN WHOLE LEG',[21.2,19]],
+ '642316':['CHICKEN THIGH',[20.15]],'642317':['CHICKEN DRUMSTICKS',[16,24.5]],'642318':['CHICKEN LIVER',[18]],'642319':['CHICKEN GIZZARD',[18]],
+ '642320':['CHICKEN HEART',[18]],'642321':['CHICKEN WINGS',[19.1]],'642322':['CHICKEN BREAST TENDERIZED',[18]]};
+const U_PRICES=[...new Set(Object.values(U_ITEMS).flatMap(v=>v[1]))];
+const U_BRANCHES={'10204':'Towar','10205':'Mankhool','10206':'Jumeirah','10207':'Aweer','10208':'Barsha','10210':'Hamriya','10211':'Rashidiya',
+ '10212':'Al Wasl','10219':'Nad Al Sheba','10222':'Al Barsha South-SMBRHE','10223':'Al Warqa','10225':'Jumeirah First','10226':'Al Barsha Hessa ST',
+ '10227':'Nad Al Hamer','10230':'Motor City','10231':'Al Nahda','10233':'Nad Al Sheba-Mall','10235':'Rukan Community','10236':'Al Khawaneej 2'};
+const uItem=t=>{const d=String(t).replace(/\D/g,'');return U_ITEMS[d]?d:null};
+const uMoney=t=>{const s=String(t).replace(/,/g,'');return /^\d*\.\d{2}$/.test(s)?parseFloat(s):null};
+function rotCanvas(src,deg){
+  const r=deg*Math.PI/180,s=Math.abs(Math.sin(r)),c=Math.abs(Math.cos(r));
+  const w=Math.round(src.width*c+src.height*s),h=Math.round(src.width*s+src.height*c);
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,w,h);g.translate(w/2,h/2);g.rotate(r);g.drawImage(src,-src.width/2,-src.height/2);return cv;
+}
+function linesOf(data){
+  if(data.lines&&data.lines.length)return data.lines.map(l=>(l.words||[]).map(w=>({t:w.text.trim(),x:(w.bbox.x0+w.bbox.x1)/2,y:(w.bbox.y0+w.bbox.y1)/2,h:w.bbox.y1-w.bbox.y0})));
+  const out=[];(data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>out.push((l.words||[]).map(w=>({t:w.text.trim(),x:(w.bbox.x0+w.bbox.x1)/2,y:(w.bbox.y0+w.bbox.y1)/2,h:w.bbox.y1-w.bbox.y0}))))));
+  return out;
+}
+async function readUnionImage(file,status){
+  const bmp=await createImageBitmap(file);
+  const mx=Math.max(bmp.width,bmp.height),sc=mx<1500?3:mx<2600?2:1;
+  const base=prep(bmp,{scale:sc,auto:true});
+  const w=await ocr();
+  const res={},seen=new Set(),rowY={},unknown=[];let text='',chosen=null;
+  const tripleFor=(vals,prices)=>{for(let i=0;i<vals.length;i++)for(let j=i+1;j<vals.length;j++)for(let k=j+1;k<vals.length;k++){
+    const[a,b,c]=[vals[i],vals[j],vals[k]];if(a>0&&prices.includes(b)&&Math.abs(a*b-c)<0.02)return a}return null};
+  const byName=t=>{const s=suggestProduct(t);return s?Object.keys(U_ITEMS).find(c=>suggestProduct(U_ITEMS[c][0])===s)||null:null};
+  const firstGuess={};
+  for(const rot of[0,90,270,180]){
+    status(`Looking for the table${rot?' (turning the picture)':''}…`);
+    const img=rot?rotCanvas(base,rot):base;
+    let hits=0;
+    for(const psm of['6','4']){
+      await w.setParameters({tessedit_pageseg_mode:psm,tessedit_char_whitelist:''});
+      const d=(await w.recognize(img)).data;text+=' '+(d.text||'');
+      for(const L of linesOf(d)){
+        if(!L.length)continue;
+        const lt=L.map(x=>x.t).join(' ');
+        if(/TOTAL|Description|Quantity|Reqd/i.test(lt))continue;
+        const it=L.find(x=>uItem(x.t));
+        let code=it?uItem(it.t):null;const ax=it?it.x:-1;
+        const vals=L.filter(x=>x.x>ax).sort((p,q)=>p.x-q.x).map(x=>uMoney(x.t)).filter(v=>v!=null);
+        if(!code&&vals.length>=2)code=byName(lt);
+        const y=L.reduce((s,x)=>s+x.y,0)/L.length,hh=L.reduce((s,x)=>s+x.h,0)/L.length;
+        if(!code){
+          if(psm==='6'&&/\bKG\b/.test(lt)&&vals.length>=2)unknown.push({y,hh,vals,rot});
+          continue;
+        }
+        seen.add(code);hits++;(rowY[code]=rowY[code]||[]).push({y,rot});
+        if(it&&firstGuess[code]==null){const g=vals.find(v=>v>0&&v<500&&!U_PRICES.includes(v));if(g!=null)firstGuess[code]=g}
+        const q=tripleFor(vals,U_ITEMS[code][1]);if(q!=null&&res[code]==null)res[code]=q;
+      }
+      if(hits>=2&&!chosen)chosen={img,rot};
+    }
+    if(seen.size>=2)break;
+  }
+  if(!seen.size&&!unknown.length)return{error:'no Union Coop items were found in this picture. Try a straight, close photo, or use the PDF.'};
+  // second method: match item rows and number rows by their order (handles tilted photos)
+  if(chosen&&Object.keys(res).length<seen.size){
+    status('Double-checking the quantities…');
+    await w.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:''});
+    let d=(await w.recognize(chosen.img)).data;
+    let W=(d.words||[]).map(x=>({t:x.text.trim(),x:(x.bbox.x0+x.bbox.x1)/2,y:(x.bbox.y0+x.bbox.y1)/2,h:x.bbox.y1-x.bbox.y0})).filter(x=>x.t);
+    let hs=W.filter(x=>uItem(x.t));
+    if(hs.length>=2){
+      const n=hs.length,my=hs.reduce((s,h)=>s+h.y,0)/n,mx=hs.reduce((s,h)=>s+h.x,0)/n;
+      const den=hs.reduce((s,h)=>s+(h.y-my)**2,0),a=den?hs.reduce((s,h)=>s+(h.y-my)*(h.x-mx),0)/den:0;
+      const ang=Math.atan(a)*180/Math.PI;
+      if(Math.abs(ang)>0.3){d=(await w.recognize(rotCanvas(chosen.img,-ang))).data;
+        W=(d.words||[]).map(x=>({t:x.text.trim(),x:(x.bbox.x0+x.bbox.x1)/2,y:(x.bbox.y0+x.bbox.y1)/2,h:x.bbox.y1-x.bbox.y0})).filter(x=>x.t);hs=W.filter(x=>uItem(x.t))}
+      const items=[];const s2=new Set();hs.sort((p,q)=>p.y-q.y).forEach(h=>{const c=uItem(h.t);if(!s2.has(c)){s2.add(c);items.push({c,h})}});
+      if(items.length){
+        const x0=Math.min(...items.map(i=>i.h.x)),hh=items.map(i=>i.h.h).sort((p,q)=>p-q)[items.length>>1]||20;
+        const yt=Math.min(...items.map(i=>i.h.y))-40,yb=Math.max(...items.map(i=>i.h.y))+hh*3;
+        const N=W.map(x=>({v:uMoney(x.t),x:x.x,y:x.y})).filter(o=>o.v!=null&&o.x>x0+hh*8&&o.y>yt&&o.y<yb).sort((p,q)=>p.y-q.y);
+        const rows=[];N.forEach(o=>{const r=rows[rows.length-1];if(r&&Math.abs(o.y-r.y)<hh*0.8){r.v.push(o);r.y=r.v.reduce((s,z)=>s+z.y,0)/r.v.length}else rows.push({y:o.y,v:[o]})});
+        const drows=rows.filter(r=>r.v.length>=3);
+        if(drows.length===items.length)items.forEach((it,i)=>{
+          const vals=drows[i].v.sort((p,q)=>p.x-q.x).map(z=>z.v);const q=tripleFor(vals,U_ITEMS[it.c][1]);
+          if(q!=null&&res[it.c]==null)res[it.c]=q;seen.add(it.c)});
+      }
+    }
+  }
+  await w.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:''});
+  const po=(text.match(/\bBP\s*(\d{8})/)||[])[1]||'';
+  const delivery=(text.match(/Delivery Date\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i)||[])[1]||'';
+  const bc=Object.keys(U_BRANCHES).find(k=>text.includes(k));
+  const order=Object.keys(U_ITEMS);
+  const lines=[...seen].sort((a,b)=>order.indexOf(a)-order.indexOf(b)).map(c=>({code:c,desc:U_ITEMS[c][0],uom:'KG',
+    qty:res[c]!=null?res[c]:(firstGuess[c]||0),unverified:res[c]==null}));
+  // rows with a quantity but no readable product: keep the quantity, the product is picked by hand
+  const known=Object.values(rowY).flat();
+  const extra=[];
+  unknown.filter(u=>!known.some(k=>k.rot===u.rot&&Math.abs(k.y-u.y)<u.hh*0.8)).sort((p,q)=>p.y-q.y).forEach(u=>{
+    if(extra.some(e=>e.rot===u.rot&&Math.abs(e.y-u.y)<u.hh*0.8))return;
+    const q=tripleFor(u.vals,U_PRICES);const g=q!=null?q:u.vals.find(v=>v>0&&v<500&&!U_PRICES.includes(v));
+    extra.push({rot:u.rot,y:u.y,line:{code:'',desc:'product not read, pick it',uom:'KG',qty:g||0,unverified:q==null,manual:true}});
+  });
+  lines.push(...extra.map(e=>e.line));
+  return{source:'UNION',po,delivery,branch:bc?U_BRANCHES[bc]+' Branch':'',lines,image:URL.createObjectURL(file)};
+}
+
 let lpos=[];
 const nkey=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const SOURCES=[['GMG','GMG'],['UNION','Union Coop'],['MLS','MLS'],['BEAST','Beast Meat'],['TMA','Meat Avenue'],['FF','Food Fabrique']];
@@ -570,7 +678,11 @@ async function addFiles(files){
       const isImg=/^image\//.test(f.type)||/\.(jpe?g|png|webp|heic)$/i.test(f.name);
       const isPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
       if(!isImg&&!isPdf){errs.push(`${f.name}: not a PDF or a picture.`);continue}
-      const r=isImg?await readMlsImage(f,m=>st(`File ${n} of ${files.length}: ${m}`)):parseLpo(await pdfItems(f));
+      let r;
+      if(isImg){
+        r=await readMlsImage(f,m=>st(`File ${n} of ${files.length}: ${m}`));
+        if(r.error&&/not an MLS/i.test(r.error))r=await readUnionImage(f,m=>st(`File ${n} of ${files.length}: ${m}`));
+      }else r=parseLpo(await pdfItems(f));
       if(r.error){errs.push(`${f.name}: ${r.error}`);continue}
       if(lpos.some(x=>x.source===r.source&&x.po&&x.po===r.po)){errs.push(`${f.name}: PO ${r.po} is already in the list.`);continue}
       const bKey=branchKey(r.source,r.branch);
@@ -604,9 +716,10 @@ function render(){
       ${r.bSaved?'':'<span class="tag check">check name</span>'}${r.sent?'<span class="tag sent">sent</span>':''}</div>
     <div class="d raw">${esc(r.branch)}</div>
     ${r.image?`<a href="${r.image}" target="_blank" rel="noopener" class="imglink">View picture</a>`:''}
+    ${r.lines.some(l=>!l.short&&!l.manual)?'<div class="note warn" style="margin:4px 0 0;padding:4px 8px;font-size:13px">New item in this LPO. Pick its name from the list; it is remembered by its item number for next time.</div>':''}
     ${r.lines.some(l=>l.unverified)?'<div class="note bad" style="margin:4px 0 0;padding:4px 8px;font-size:13px">Red quantities were not confirmed. Check them against the picture.</div>':''}</div>
     <table>${r.lines.map((l,j)=>`<tr><td><select data-p="${i}:${j}" class="${l.short?'':'unset'}" aria-label="Product">${prodOpts(l.short)}</select>
-      <div class="d desc">${esc(l.desc)}</div>${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}</td>
+      ${!l.short&&!l.manual?`<div class="newitem">New item${l.code?` <b>#${esc(l.code)}</b>`:''}: ${esc(l.desc)}</div>`:`<div class="d desc">${esc(l.desc)}</div>`}${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}</td>
       <td class="sz">${isWhole(l)?`<select data-sz="${i}:${j}" aria-label="Bird size">${sizeOpts(l.size)}</select>`:''}</td>
       <td class="q"><input inputmode="decimal" data-q="${i}:${j}" value="${l.qty?q2(l.qty):''}" placeholder="qty" aria-label="Quantity" class="${l.unverified?'unv':''}"></td>
       <td class="dl"><button class="rmv" data-dl="${i}:${j}" aria-label="Delete item">×</button></td></tr>`).join('')}</table>
@@ -691,6 +804,7 @@ async function remember(only){
 }
 $('#next').onclick=async()=>{
   const r=lpos.find(x=>!x.sent);if(!r)return;
+  if(r.lines.some(l=>!l.short.trim()&&l.qty>0)&&!confirm(`${r.name}: some items have no name and will be left out. Send anyway?`))return;
   if(r.lines.some(l=>l.unverified)&&!confirm(`${r.name}: some quantities were not confirmed from the picture. Did you check them?`))return;
   remember(r);if(await shareText(msg(r))){r.sent=true;render()}
 };
