@@ -78,6 +78,32 @@ td input.unv{border-color:var(--bad);background:var(--bad-bg)}
 .dense .card .acts .btn{padding:4px 10px;font-size:14px}
 body:not(.showdesc) .d.desc,body:not(.showdesc) .d.raw{display:none}
 td.q .d{display:inline;margin-left:4px}
+.sendbar{position:fixed;left:0;right:0;bottom:0;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(238,243,244,.96);border-top:1px solid var(--line);z-index:5}
+.sendbar .btn{width:100%;max-width:736px;display:block;margin:0 auto;padding:12px;font-size:17px}
+.sendbar .btn:disabled{background:var(--ok);opacity:1}
+body{padding-bottom:70px}
+details.gl{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:14px}
+details.gl summary{cursor:pointer;font-weight:600;color:var(--chill)}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:6px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.hbtn{background:none;border:1px solid #6E8C94;color:#fff;border-radius:4px;padding:3px 10px;font:600 14px var(--cond);cursor:pointer;text-decoration:none}
+.stabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.stabs button{border:1.5px solid var(--line);background:var(--paper);border-radius:16px;padding:4px 11px;font:600 14px var(--cond);color:var(--steel);cursor:pointer}
+.stabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.sset{background:var(--paper);border:1px solid var(--line);border-radius:6px;margin-bottom:10px}
+.sset h3{font:700 17px var(--cond);margin:0;padding:8px 10px;border-bottom:1px solid var(--line)}
+.sset .meta{margin:6px 10px}
+.srow{display:flex;gap:8px;align-items:center;padding:5px 10px;border-top:1px solid #F1F5F6;font-size:14px}
+.srow .t{flex:1;min-width:0}.srow small{display:block;color:var(--steel);font-size:11px;overflow-wrap:anywhere}
+.srow input,.srow select{width:100%;height:28px;border:1px solid var(--line);border-radius:4px;padding:0 6px;background:#fff;font-size:14px}
+.srow.add input{flex:1.3}.srow.add select{flex:1}
+.srow .del{border:0;background:none;color:var(--bad);cursor:pointer;font-size:13px;white-space:nowrap}
+.dense td.dl{width:22px;padding:0 4px 0 0}
+.rmv{border:0;background:none;color:#A7B6BA;font-size:17px;line-height:1;cursor:pointer;padding:0 2px}
+.rmv:hover{color:var(--bad)}
+.additem{border:0;background:none;color:var(--chill);font:600 13px var(--cond);cursor:pointer;padding:2px 8px 6px}
+.dense td.sz{width:62px;padding:0 0 0 4px}
+.dense td.sz select{width:62px;padding:0 2px;font-size:13px}
 #login{max-width:360px;margin:10vh auto;padding:0 16px}
 #login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0 10px;background:#fff}
 details.names{margin-top:28px;background:var(--paper);border:1px solid var(--line);border-radius:6px}
@@ -88,7 +114,7 @@ details.names summary{padding:12px 14px;cursor:pointer;font:600 17px var(--cond)
 </style>
 </head>
 <body class="dense">
-<header><div class="in"><h1>IAT LPO</h1><small id="who"></small></div></header>
+<header><div class="in"><h1>IAT LPO</h1><span><small id="who"></small> <button class="hbtn" id="setBtn">Settings</button></span></div></header>
 
 <div id="login" hidden>
   <h2 style="font-size:26px">Sign in</h2>
@@ -102,19 +128,21 @@ details.names summary{padding:12px 14px;cursor:pointer;font:600 17px var(--cond)
 <div id="app" hidden><div class="wrap">
   <label class="toggle" style="margin:0 0 6px;font-size:14px"><input type="checkbox" id="showDesc"> Show the names from the PO</label>
   <div id="mode"></div>
-  <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">GMG and Union Coop PDFs, MLS pictures · several at once is fine</span>
+  <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">GMG, Union Coop, Beast Meat, Meat Avenue, Food Fabrique PDFs · MLS pictures · several at once is fine</span>
     <input type="file" id="file" accept="application/pdf,.pdf,image/*" multiple></label>
   <div id="errs"></div>
   <div id="list"></div>
   <div class="out" id="out" hidden>
     <label class="toggle"><input type="checkbox" id="withPo"> Add the PO number under the name</label>
-    <p class="meta" style="margin:6px 0">All LPOs together:</p><textarea id="txt" readonly aria-label="WhatsApp text"></textarea>
-    <div class="acts"><button class="btn" id="copy">Copy all</button><button class="btn wa" id="wa">Send all</button></div>
-    <p class="meta">Send opens the share menu: pick WhatsApp Business, then the orders group. Names you fix are saved for everyone.</p>
     <button class="btn ghost small" id="clear">Clear and start over</button>
   </div>
-  <details class="names" id="names"><summary>Saved names</summary><div id="nlist"></div></details>
+  
 </div></div>
+<div id="settings" hidden><div class="wrap">
+  <div class="stabs" id="stabs"></div>
+  <div id="sbody"></div>
+</div></div>
+<div class="sendbar" id="sendbar" hidden><button class="btn wa" id="next"></button></div>
 <datalist id="dlB"></datalist><datalist id="dlP"></datalist>
 <script type="module">
 // ================= SETTINGS =================
@@ -131,6 +159,8 @@ function buildLines(items){
   const its=items.filter(i=>i.str&&i.str.trim()).sort((a,b)=>a.y-b.y||a.x-b.x);
   const lines=[];
   for(const it of its){
+    if(its.some(o=>o!==it&&o._keep&&o.str===it.str&&Math.abs(o.x-it.x)<1.5&&Math.abs(o.y-it.y)<1.5))continue;
+    it._keep=true;
     let L=lines.find(l=>Math.abs(l.y-it.y)<=2.5);
     if(!L){L={y:it.y,items:[]};lines.push(L)}
     L.items.push(it);
@@ -241,17 +271,80 @@ const PARSERS=[
       stopRe:/^(TOTAL|.*Delivery Should be made|.*TOTAL\s+[\d,.]+)/i});
     return {po,delivery,branch,lines:rows};
   }},
+ {id:'BEAST',name:'Beast Meat',
+  detect:t=>/Beast Meat Shop/i.test(t)&&/PURCHASE ORDER/i.test(t),
+  parse(lines,flat){
+    const di=lines.findIndex(l=>/^Document Number/i.test(l.text));
+    const po=di>=0&&lines[di+1]?(lines[di+1].text.match(/^\d+/)||[''])[0]:'';
+    const delivery=(flat.match(/Delivery Date:\s*(\d{2}\.\d{2}\.\d{2,4})/i)||[])[1]||'';
+    const ai=lines.findIndex(l=>/^Delivery Address/i.test(l.text));
+    const bl=ai>=0?lines.slice(ai+1,ai+6).find(l=>/\s-\s/.test(l.text)):null;
+    const branch=bl?bl.text:'';
+    const out=[];
+    lines.forEach((L,i)=>{
+      const t=L.items.map(x=>x.str.trim()).filter(Boolean);
+      if(!/^\d{3}$/.test(t[0]||''))return;
+      const u=t.findIndex((x,k)=>k>1&&/^(Kilogram|Kilograms|KG|KGS|Each|Piece|Pieces|Pcs|Tray|Trays|Box|Carton)$/i.test(x)&&/^[\d.,]+$/.test(t[k-1]));
+      if(u<0)return;
+      const next=(lines[i+1]&&lines[i+1].text)||'';
+      out.push({code:(next.match(/Item Code:\s*(\S+)/i)||[])[1]||'',desc:t.slice(1,u-1).join(' '),
+        uom:/^kilo|^kg/i.test(t[u])?'KG':'PCS',qty:num(t[u-1])});
+    });
+    return {po,delivery,branch,lines:out.filter(r=>r.qty>0)};
+  }},
+ {id:'TMA',name:'The Meat Avenue',
+  detect:t=>/MEAT AVENUE/i.test(t)&&/Purchase Order\s*#/i.test(t),
+  parse(lines,flat){
+    const po=(flat.match(/Purchase Order\s*#\s*(P\d+)/i)||[])[1]||'';
+    const si=lines.findIndex(l=>/^Shipping address/i.test(l.text));
+    let branch='';
+    if(si>=0){const iat=lines[si].items.find(x=>/IAT TRADING/i.test(x.str));const lim=iat?iat.x-5:9999;
+      for(const L of lines.slice(si+1,si+4)){const s=L.items.filter(x=>x.x<lim).map(x=>x.str.trim()).join(' ').trim();if(s){branch=s;break}}}
+    const h=findItem(lines,/^DESCRIPTION$/i);if(!h)return{po,delivery:'',branch,lines:[]};
+    const dh=lines[h.li].items.find(x=>/^DATE/i.test(x.str.trim()));const xl=dh?dh.x-30:200;
+    const rows=[];let cur=null,delivery='';
+    for(let i=h.li+1;i<lines.length;i++){
+      const L=lines[i];if(/Untaxed Amount/i.test(L.text))break;
+      const dt=L.items.find(x=>/^\d{2}\/\d{2}\/\d{4}/.test(x.str.trim()));
+      const left=L.items.filter(x=>x.x<xl).map(x=>x.str.trim()).filter(Boolean);
+      if(dt){if(!delivery)delivery=dt.str.trim().slice(0,10);cur={code:'',desc:left.join(' '),uom:'KG',qty:null};rows.push(cur)}
+      else if(cur&&left.length)cur.desc+=' '+left.join(' ');
+      if(cur&&cur.qty==null){const q=L.items.map(x=>x.str.trim()).find(v=>/^[\d,]+\.\d{3}(\s*kg)?$/i.test(v));if(q)cur.qty=num(q.replace(/\s*kg/i,''))}
+    }
+    return {po,delivery,branch,lines:rows.filter(r=>r.desc&&r.qty>0)};
+  }},
+ {id:'FF',name:'Food Fabrique',
+  detect:t=>/Food Fabrique/i.test(t)&&/PO\s*#/i.test(t),
+  parse(lines,flat){
+    const po=(flat.match(/PO\s*#\s*([\w-]+)/i)||[])[1]||'';
+    const delivery=(flat.match(/Expected delivery date\s*(\d{2}\/\d{2}\/\d{4})/i)||[])[1]||'';
+    const dl=lines.findIndex(l=>/^Date\b/.test(l.text)||/\bDate\s+\d{2}\//.test(l.text));
+    const top=lines.slice(0,dl>0?dl:3).flatMap(l=>l.items.filter(x=>x.x<200).map(x=>x.str.trim())).filter(v=>v&&!/^Order$/i.test(v));
+    const branch=top.join(' ').replace(/\s+/g,' ').trim();
+    const h=findItem(lines,/^Product No/i);if(!h)return{po,delivery,branch,lines:[]};
+    const hi=lines[h.li].items,xd=(hi.find(x=>/^Description/i.test(x.str))||{x:100}).x-5,xq=(hi.find(x=>/^Qty/i.test(x.str))||{x:210}).x-8;
+    const all=[];for(let i=h.li+1;i<lines.length;i++){if(/SUBTOTAL|^Total\b/i.test(lines[i].text))break;all.push(...lines[i].items.map(x=>({...x,y:lines[i].y})))}
+    const anchors=all.filter(x=>x.x<xd&&/^\d{2,8}$/.test(x.str.trim())).map(a=>({code:a.str.trim(),y:a.y,desc:[],qty:null,uom:'KG'}));
+    if(!anchors.length)return{po,delivery,branch,lines:[]};
+    const near=y=>anchors.reduce((b,a)=>Math.abs(a.y-y)<Math.abs(b.y-y)?a:b);
+    all.filter(x=>x.x>=xd&&x.x<xq).sort((a,b)=>a.y-b.y||a.x-b.x).forEach(x=>near(x.y).desc.push(x.str.trim()));
+    anchors.forEach(a=>{const row=all.filter(x=>Math.abs(x.y-a.y)<3&&x.x>=xq).sort((p,q)=>p.x-q.x);
+      const qi=row.findIndex(x=>/^[\d.,]+$/.test(x.str.trim()));if(qi>=0){a.qty=num(row[qi].str);const u=row[qi+1];if(u&&!/^kg/i.test(u.str.trim()))a.uom='PCS'}});
+    return{po,delivery,branch,lines:anchors.map(a=>({code:a.code,desc:a.desc.join(' '),uom:a.uom,qty:a.qty})).filter(r=>r.desc&&r.qty>0)};
+  }},
 ];
 
 const PRODUCT_RULES=[
  [['TENDER'],'tender breast'],
+ [['CHILLED','BREAST'],'chilled breast'],
+ [['THIGH','SKINLES'],'thigh bl/sl'],[['BRST'],'breast'],
  [['BONELESS','THIGH','S/LES'],'thigh bl/sl'],[['BONELESS','THIGH','SKINLESS'],'thigh bl/sl'],
  [['BONELESS','THIGH'],'thigh bl/so'],[['BONELESS','LEG'],'whole legs bl/so'],
- [['WHOLE','LEG'],'whole legs'],[['DRUM'],'drumsticks'],[['THIGH'],'thigh'],[['WING'],'wings'],
+ [['WHOLE','LEG'],'whole legs'],[['DRUM'],'drumsticks'],[['THIGH'],'thigh'],[['LEG'],'whole legs'],[['WING'],'wings'],
  [['LIVER'],'liver'],[['GIZZ'],'gizzard'],[['HEART'],'heart'],[['BREAST'],'breast'],
  [['MINCE'],'minced'],[['BONE'],'bone'],[['WHOLE'],'chicken']];
 function suggestProduct(desc){
-  const d=desc.toUpperCase();
+  const d=desc.toUpperCase().replace(/BONE\s+LESS/g,'BONELESS').replace(/SKIN\s+LESS/g,'SKINLESS');
   for(const[w,s]of PRODUCT_RULES)if(w.every(x=>d.includes(x)))return s+(/\b500\s*G/.test(d)?' 500g':'');
   return '';
 }
@@ -259,9 +352,17 @@ function suggestBranch(raw,source){
   let r=raw;
   if(source==='UNION')r='Union '+raw.replace(/\s*Branch\s*$/i,'');
   if(source==='MLS')r='M L S '+raw.replace(/([a-z])([A-Z])/g,'$1 $2');
+  if(source==='BEAST'){const p=raw.split(/\s+-\s+/);r='Beast Meat '+(p[1]||p[0])}
+  if(source==='FF'){const m=raw.match(/^(.*?)\s*\(/);r='Food Fabrique '+(m?m[1]:raw)}
+  if(source==='TMA')r=/FZCO/i.test(raw)?'Jabal lubnan':raw.replace(/L\.?L\.?C\.?$/i,'LLC');
   if(source==='GMG')r=raw.replace(/^GEANT EXPRESS\s*-\s*/i,'Geant - ').replace(/^GEANT\s*-\s*/i,'Geant - ');
+  if(r==='Jabal lubnan')return r;
   return r.replace(/\s*[-–]\s*/g,' - ').split(/\s+/)
-    .map(w=>w==='-'||['MLS','GMG','JLT','JVC','UAE','DIP','JBR'].includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+    .map(w=>w==='-'||['MLS','GMG','JLT','JVC','UAE','DIP','JBR','FZCO','LLC','FZE'].includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+}
+function branchKey(source,raw){
+  const k=String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  return source+'|'+(source==='MLS'?k.slice(0,8):k);
 }
 function parseLpo(items){
   const lines=buildLines(items);const flat=lines.map(l=>l.text).join(' ');
@@ -274,18 +375,19 @@ function parseLpo(items){
 
 const BASE_PRODUCTS=['chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
  'wings','liver','gizzard','heart','minced','bone','tender breast',
- 'breast 500g','thigh 500g','wings 500g','drumsticks 500g','chicken 1000g'];
+ 'breast 500g','thigh 500g','wings 500g','drumsticks 500g','chicken 1000g','chilled breast'];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const q2=n=>String(Math.round(n*1000)/1000);
 
 /* ---------- saved names store (Firestore or this device) ---------- */
-const names={branches:{},products:{}};
+const KINDS=['branches','products','descs','rules','opts'];
+const names={branches:{},products:{},descs:{},rules:{},opts:{}};
 let fb=null;
 const LS='iat_lpo_names';
 async function initStore(){
   if(!FIREBASE_CONFIG){
-    try{Object.assign(names,JSON.parse(localStorage.getItem(LS))||{})}catch(e){}
+    try{const s=JSON.parse(localStorage.getItem(LS))||{};KINDS.forEach(k=>{if(s[k])names[k]=s[k]})}catch(e){}
     $('#mode').innerHTML='<div class="note warn">Names are saved on this device only. Add the Firebase settings to share them with the team.</div>';
     return true;
   }
@@ -300,8 +402,8 @@ async function initStore(){
     if(!u){showLogin();res(false);return}
     $('#who').innerHTML=`${esc(u.email)} <button id="out1">Sign out</button>`;
     $('#out1').onclick=()=>A.signOut(fb.auth);
-    for(const k of ['branches','products'])
-      F.onSnapshot(F.doc(fb.db,'lpo_names',k),s=>{names[k]=(s.exists()&&s.data().m)||{};refreshLists();renderNames()},
+    for(const k of KINDS)
+      F.onSnapshot(F.doc(fb.db,'lpo_names',k),s=>{names[k]=(s.exists()&&s.data().m)||{};refreshLists();renderSettings()},
         e=>{$('#mode').innerHTML=`<div class="note bad">Can't read saved names: ${esc(e.message)}</div>`});
     showApp();res(true);
   }));
@@ -433,6 +535,18 @@ async function readMlsImage(file,status){
 
 let lpos=[];
 const nkey=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const SOURCES=[['GMG','GMG'],['UNION','Union Coop'],['MLS','MLS'],['BEAST','Beast Meat'],['TMA','Meat Avenue'],['FF','Food Fabrique']];
+function suggestFor(desc,source){
+  const d=String(desc||'').toUpperCase().replace(/BONE\s+LESS/g,'BONELESS').replace(/SKIN\s+LESS/g,'SKINLESS');
+  for(const r of (names.rules[source]||[])){
+    const ws=String(r.w||'').split('+').map(x=>x.trim().toUpperCase()).filter(Boolean);
+    if(ws.length&&ws.every(x=>d.includes(x)))return r.p;
+  }
+  let s=suggestProduct(desc);
+  if(source==='MLS'&&s)s=s.replace(/ 500g$/,'')+(s==='chicken'?' 1000g':' 500g');
+  return s;
+}
+const prodKey=(source,l,sug)=>source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${source}|${l.code||nkey(l.desc)}`;
 async function addFiles(files){
   const errs=[];const st=m=>$('#errs').innerHTML=`<p class="meta"><span class="spin"></span> ${esc(m)}</p>`;
   let n=0;
@@ -443,13 +557,15 @@ async function addFiles(files){
       const r=isImg?await readMlsImage(f,m=>st(`File ${n} of ${files.length}: ${m}`)):parseLpo(await pdfItems(f));
       if(r.error){errs.push(`${f.name}: ${r.error}`);continue}
       if(lpos.some(x=>x.source===r.source&&x.po&&x.po===r.po)){errs.push(`${f.name}: PO ${r.po} is already in the list.`);continue}
-      const bKey=`${r.source}|${nkey(r.branch)}`;
+      const bKey=branchKey(r.source,r.branch);
       r.bKey=bKey;r.bSaved=!!names.branches[bKey];r.name=names.branches[bKey]||suggestBranch(r.branch,r.source);
       r.lines.forEach(l=>{
-        let sug=suggestProduct(l.desc);
-        if(r.source==='MLS'&&sug)sug=sug.replace(/ 500g$/,'')+(sug==='chicken'?' 1000g':' 500g');
-        l.key=r.source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${r.source}|${l.code||nkey(l.desc)}`;
-        l.saved=!!names.products[l.key];l.short=names.products[l.key]||sug;});
+        const base=suggestProduct(l.desc);let sugB=base;
+        if(r.source==='MLS'&&base)sugB=base.replace(/ 500g$/,'')+(base==='chicken'?' 1000g':' 500g');
+        l.key=prodKey(r.source,l,sugB);
+        l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
+        const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
+        l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';});
       r.file=f.name;lpos.push(r);
     }catch(e){errs.push(`${f.name}: can't read this PDF (${e.message}).`)}
   }
@@ -474,27 +590,45 @@ function render(){
     ${r.lines.some(l=>l.unverified)?'<div class="note bad" style="margin:4px 0 0;padding:4px 8px;font-size:13px">Red quantities were not confirmed. Check them against the picture.</div>':''}</div>
     <table>${r.lines.map((l,j)=>`<tr><td><select data-p="${i}:${j}" class="${l.short?'':'unset'}" aria-label="Product">${prodOpts(l.short)}</select>
       <div class="d desc">${esc(l.desc)}</div>${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}</td>
-      <td class="q"><input inputmode="decimal" data-q="${i}:${j}" value="${q2(l.qty)}" aria-label="Quantity" class="${l.unverified?'unv':''}"></td></tr>`).join('')}</table></div>`).join('');
+      <td class="sz">${isWhole(l)?`<select data-sz="${i}:${j}" aria-label="Bird size">${sizeOpts(l.size)}</select>`:''}</td>
+      <td class="q"><input inputmode="decimal" data-q="${i}:${j}" value="${l.qty?q2(l.qty):''}" placeholder="qty" aria-label="Quantity" class="${l.unverified?'unv':''}"></td>
+      <td class="dl"><button class="rmv" data-dl="${i}:${j}" aria-label="Delete item">×</button></td></tr>`).join('')}</table>
+    <button class="additem" data-add="${i}">+ Add item</button></div>`).join('');
   $('#out').hidden=!lpos.length;
   document.querySelectorAll('[data-b]').forEach(e=>e.oninput=()=>{lpos[+e.dataset.b].name=e.value;upd()});
   document.querySelectorAll('[data-p]').forEach(e=>e.onchange=()=>{
     const[i,j]=e.dataset.p.split(':'),l=lpos[i].lines[j];
     if(e.value==='__other'){const v=prompt('Product name as you write it in the group:',l.short||'');if(v&&v.trim())l.short=v.trim();render();return}
-    l.short=e.value;e.classList.toggle('unset',!e.value);upd()});
+    const was=isWhole(l);l.short=e.value;if(!isWhole(l))l.size='';
+    if(was!==isWhole(l)){render();return}
+    e.classList.toggle('unset',!e.value);upd()});
   document.querySelectorAll('[data-q]').forEach(e=>e.oninput=()=>{const[i,j]=e.dataset.q.split(':');const l=lpos[i].lines[j];l.qty=parseFloat(e.value)||0;l.unverified=false;e.classList.remove('unv');upd()});
   document.querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{lpos.splice(+e.dataset.rm,1);render()});
-  document.querySelectorAll('[data-cp]').forEach(e=>e.onclick=()=>{copyText(msg(lpos[+e.dataset.cp]),e,'Copy');remember()});
+  document.querySelectorAll('[data-sz]').forEach(e=>e.onchange=()=>{const[i,j]=e.dataset.sz.split(':'),l=lpos[i].lines[j];
+    if(e.value==='__other'){const v=(prompt('Bird size (grams):',l.size||'')||'').replace(/\D/g,'');l.size=v;render();return}
+    l.size=e.value;upd()});
+  document.querySelectorAll('[data-dl]').forEach(e=>e.onclick=()=>{const[i,j]=e.dataset.dl.split(':');lpos[i].lines.splice(+j,1);render()});
+  document.querySelectorAll('[data-add]').forEach(e=>e.onclick=()=>{const r=lpos[+e.dataset.add];
+    r.lines.push({code:'',desc:'added by hand',uom:r.source==='MLS'?'PCS':'KG',qty:0,short:'',manual:true,key:null,saved:false});
+    render();const s=document.querySelector(`[data-p="${e.dataset.add}:${r.lines.length-1}"]`);if(s)s.focus()});
+  document.querySelectorAll('[data-cp]').forEach(e=>e.onclick=()=>{const r=lpos[+e.dataset.cp];copyText(msg(r),e,'Copy');remember(r)});
   document.querySelectorAll('[data-wa]').forEach(e=>e.onclick=async()=>{
     const r=lpos[+e.dataset.wa];
     if(r.lines.some(l=>l.unverified)&&!confirm('Some quantities were not confirmed from the image. Did you check them?'))return;
-    remember();if(await shareText(msg(r))){r.sent=true;render()}});
+    remember(r);if(await shareText(msg(r))){r.sent=true;render()}});
   upd();
 }
-const unitOf=u=>/^KGS?$/.test(u)?'kg':/^(PCS|PC|EA|EACH|NOS|UNIT)$/.test(u)?'':u.toLowerCase();
+const unitOf=(u,src)=>/^KGS?$/.test(u)?((names.opts[src]||{}).kg??'kg'):/^(PCS|PC|EA|EACH|NOS|UNIT)$/.test(u)?'':String(u||'').toLowerCase();
 function msg(r){
   const po=$('#withPo').checked;
   return [r.name.trim()+(po&&r.po?`\nPO ${r.po}`:''),'',
-    ...r.lines.filter(l=>l.short.trim()&&l.qty>0).map(l=>`${q2(l.qty)} ${unitOf(l.uom)?unitOf(l.uom)+' ':''}${l.short.trim()}`)].join('\n');
+    ...mergeLines(r.lines,r.source).map(l=>`${q2(l.qty)} ${unitOf(l.uom,r.source)?unitOf(l.uom,r.source)+' ':''}${l.short}`)].join('\n');
+}
+const isWhole=l=>/^(whole )?chicken$/i.test(String(l.short||'').trim());
+function sizeOpts(cur){
+  const list=['700','800','900','1000','1100','1200','1300','1400','1500','1600'];
+  if(cur&&!list.includes(cur))list.push(cur);
+  return `<option value=""${cur?'':' selected'}>size</option>`+list.map(v=>`<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('')+'<option value="__other">other…</option>';
 }
 function prodOpts(cur){
   const list=[...new Set([...BASE_PRODUCTS,...Object.values(names.products)])].sort();
@@ -504,7 +638,20 @@ function prodOpts(cur){
     '<option value="__other">Other (type it)…</option>';
 }
 function markSaved(){document.querySelectorAll('.tag.check').forEach(t=>{t.className='tag saved';t.textContent='saved'})}
-function upd(){$('#txt').value=lpos.map(msg).join('\n\n\n')}
+function mergeLines(ls,src){
+  const m=new Map();
+  ls.filter(l=>l.short.trim()&&l.qty>0).forEach(l=>{const name=l.short.trim()+(isWhole(l)&&l.size?' '+l.size:'');const k=name+'|'+unitOf(l.uom,src);
+    if(m.has(k))m.get(k).qty+=l.qty;else m.set(k,{short:name,uom:l.uom,qty:l.qty})});
+  return[...m.values()];
+}
+function upd(){
+  const left=lpos.filter(r=>!r.sent),bar=$('#sendbar');
+  bar.hidden=!lpos.length||!$('#settings').hidden;
+  if(!lpos.length)return;
+  const n=lpos.indexOf(left[0])+1;
+  $('#next').textContent=left.length?`Send next: ${left[0].name.trim()||'order'} (${n} of ${lpos.length})`:'All orders sent ✓';
+  $('#next').disabled=!left.length;
+}
 async function copyText(t,btn,label){
   let ok=false;
   try{await navigator.clipboard.writeText(t);ok=true}catch(e){}
@@ -513,21 +660,23 @@ async function copyText(t,btn,label){
 }
 $('#withPo').onchange=upd;
 $('#showDesc').onchange=()=>document.body.classList.toggle('showdesc',$('#showDesc').checked);
-async function remember(){
+async function remember(only){
   const jobs=[];
-  lpos.forEach(r=>{
+  (only?[only]:lpos).forEach(r=>{
     if(r.name.trim()&&names.branches[r.bKey]!==r.name.trim())jobs.push(saveName('branches',r.bKey,r.name.trim()));
-    r.lines.forEach(l=>{if(l.short.trim()&&names.products[l.key]!==l.short.trim())jobs.push(saveName('products',l.key,l.short.trim()))});
+    r.lines.forEach(l=>{if(!l.manual&&l.short.trim()&&names.products[l.key]!==l.short.trim()){jobs.push(saveName('products',l.key,l.short.trim()));
+      if(names.descs[l.key]!==l.desc)jobs.push(saveName('descs',l.key,l.desc))}});
   });
   try{await Promise.all(jobs)}catch(e){$('#errs').innerHTML=`<div class="note bad">Names not saved: ${esc(e.message)}</div>`;return}
-  lpos.forEach(r=>{r.bSaved=true;r.lines.forEach(l=>l.saved=!!l.short.trim())});
-  if(!fb){refreshLists();renderNames()}
+  (only?[only]:lpos).forEach(r=>{r.bSaved=true;r.lines.forEach(l=>l.saved=!l.manual&&!!l.short.trim())});
+  if(!fb){refreshLists();renderSettings()}
   markSaved();
 }
-$('#copy').onclick=()=>{copyText($('#txt').value,$('#copy'),'Copy all');remember()};
-$('#wa').onclick=async()=>{
-  if(lpos.some(r=>r.lines.some(l=>l.unverified))&&!confirm('Some quantities were not confirmed from the image. Did you check them?'))return;
-  remember();if(await shareText($('#txt').value)){lpos.forEach(r=>r.sent=true);render()}};
+$('#next').onclick=async()=>{
+  const r=lpos.find(x=>!x.sent);if(!r)return;
+  if(r.lines.some(l=>l.unverified)&&!confirm(`${r.name}: some quantities were not confirmed from the picture. Did you check them?`))return;
+  remember(r);if(await shareText(msg(r))){r.sent=true;render()}
+};
 async function shareText(t){
   if(navigator.share){try{await navigator.share({text:t});return true}catch(e){if(e.name==='AbortError')return false}}
   window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');return true;
@@ -539,21 +688,51 @@ function refreshLists(){
   $('#dlB').innerHTML=[...new Set(Object.values(names.branches))].sort().map(n=>`<option value="${esc(n)}">`).join('');
   $('#dlP').innerHTML=[...new Set([...BASE_PRODUCTS,...Object.values(names.products)])].sort().map(n=>`<option value="${esc(n)}">`).join('');
 }
-function renderNames(){
-  const row=(kind,k,v)=>{const[src,raw]=k.split('|');
-    return `<div class="nm"><div class="t"><b>${esc(v)}</b><small>${esc(src)} · ${esc(raw)}</small></div><button data-del="${kind}" data-k="${esc(k)}">Forget</button></div>`};
-  const b=Object.entries(names.branches),p=Object.entries(names.products);
-  $('#nlist').innerHTML=(b.length||p.length)?
-    `<div class="nm"><b>Customers</b></div>`+b.map(([k,v])=>row('branches',k,v)).join('')+
-    `<div class="nm"><b>Products</b></div>`+p.map(([k,v])=>row('products',k,v)).join(''):
-    '<div class="nm meta">Nothing saved yet. Names are saved when you copy or send a text.</div>';
-  document.querySelectorAll('[data-del]').forEach(e=>e.onclick=async()=>{
-    if(!confirm('Forget this saved name?'))return;
-    await removeName(e.dataset.del,e.dataset.k);if(!fb)renderNames()});
+/* ---------- settings: one tab per LPO format ---------- */
+let sTab='GMG';
+$('#setBtn').onclick=()=>{const on=$('#settings').hidden;$('#settings').hidden=!on;$('#app').hidden=on;$('#setBtn').textContent=on?'Back':'Settings';
+  $('#sendbar').hidden=on||!lpos.length;if(on)renderSettings();window.scrollTo(0,0)};
+function reapply(){lpos.forEach(r=>r.lines.forEach(l=>{if(!l.manual&&!names.products[l.key])l.short=suggestFor(l.desc,r.source)}));render()}
+function renderSettings(){
+  if($('#settings').hidden)return;
+  $('#stabs').innerHTML=SOURCES.map(([id,n])=>`<button data-t="${id}" class="${id===sTab?'on':''}">${esc(n)}</button>`).join('');
+  document.querySelectorAll('#stabs button').forEach(b=>b.onclick=()=>{sTab=b.dataset.t;renderSettings()});
+  const pre=sTab+'|';
+  const br=Object.entries(names.branches).filter(([k])=>k.startsWith(pre)).sort((a,b)=>a[1].localeCompare(b[1]));
+  const pr=Object.entries(names.products).filter(([k])=>k.startsWith(pre)).sort((a,b)=>a[1].localeCompare(b[1]));
+  const rules=names.rules[sTab]||[];
+  const kg=(names.opts[sTab]||{}).kg??'kg';
+  $('#sbody').innerHTML=`
+  <section class="sset"><h3>Reading rules</h3>
+    <p class="meta">If a PO line contains these words, write this product. Use + for several words. Rules win over the built-in reading.</p>
+    ${rules.map((r,i)=>`<div class="srow"><span class="t"><b>${esc(r.w)}</b> → ${esc(r.p)}</span><button class="del" data-rr="${i}">Delete</button></div>`).join('')||'<div class="srow meta">No rules yet.</div>'}
+    <div class="srow add"><input id="rw" placeholder="e.g. BONELESS + THIGH"><select id="rp">${prodOpts('')}</select><button class="btn small" id="radd">Add</button></div>
+  </section>
+  <section class="sset"><h3>Weight unit</h3>
+    <div class="srow"><span class="t">Write kilograms as</span><select id="kgopt" style="width:120px;flex:none">${['kg','KG','Kg','kgs',''].map(v=>`<option value="${v}"${v===kg?' selected':''}>${v?v:'(nothing)'}</option>`).join('')}</select></div>
+  </section>
+  <section class="sset"><h3>Customer names</h3>
+    ${br.map(([k,v])=>`<div class="srow"><span class="t"><small>${esc(k.slice(pre.length))}</small><input data-bk="${esc(k)}" value="${esc(v)}"></span><button class="del" data-db="${esc(k)}">Delete</button></div>`).join('')||'<div class="srow meta">No saved customer names yet. They are saved when you send an order.</div>'}
+  </section>
+  <section class="sset"><h3>Product names</h3>
+    ${pr.map(([k,v])=>`<div class="srow"><span class="t"><small>${esc(names.descs[k]||k.slice(pre.length))}</small><select data-pk="${esc(k)}">${prodOpts(v)}</select></span><button class="del" data-dp="${esc(k)}">Delete</button></div>`).join('')||'<div class="srow meta">No saved product names yet.</div>'}
+  </section>`;
+  const sb=$('#sbody');
+  $('#radd').onclick=async()=>{const w=$('#rw').value.trim(),p=$('#rp').value;
+    if(!w||!p||p==='__other'){alert('Type the words and pick the product.');return}
+    await saveName('rules',sTab,[...rules,{w,p}]);renderSettings();reapply()};
+  sb.querySelectorAll('[data-rr]').forEach(b=>b.onclick=async()=>{const n=rules.slice();n.splice(+b.dataset.rr,1);await saveName('rules',sTab,n);renderSettings();reapply()});
+  $('#kgopt').onchange=async e=>{await saveName('opts',sTab,{...(names.opts[sTab]||{}),kg:e.target.value});render()};
+  sb.querySelectorAll('[data-bk]').forEach(i=>i.onchange=async()=>{if(i.value.trim())await saveName('branches',i.dataset.bk,i.value.trim());lpos.forEach(r=>{if(r.bKey===i.dataset.bk)r.name=i.value.trim()});render()});
+  sb.querySelectorAll('[data-db]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this saved customer name?'))return;await removeName('branches',b.dataset.db);renderSettings()});
+  sb.querySelectorAll('[data-pk]').forEach(s=>s.onchange=async()=>{let v=s.value;
+    if(v==='__other'){v=(prompt('Product name as you write it in the group:')||'').trim();if(!v){renderSettings();return}}
+    await saveName('products',s.dataset.pk,v);lpos.forEach(r=>r.lines.forEach(l=>{if(l.key===s.dataset.pk)l.short=v}));render();renderSettings()});
+  sb.querySelectorAll('[data-dp]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this saved product name?'))return;await removeName('products',b.dataset.dp);renderSettings();reapply()});
 }
 
 (async()=>{
-  try{if(await initStore()){showApp();refreshLists();renderNames()}}
+  try{if(await initStore()){showApp();refreshLists()}}
   catch(e){document.body.insertAdjacentHTML('beforeend',`<div class="wrap"><div class="note bad">Could not start: ${esc(e.message)}</div></div>`)}
 })();
 </script>
