@@ -7,7 +7,7 @@ self.addEventListener('fetch',e=>{
   if(e.request.method==='POST'&&u.pathname.endsWith('/share-target')){
     e.respondWith((async()=>{
       const fd=await e.request.formData();
-      const files=fd.getAll('lpo').filter(f=>f&&f.size);
+      const files=[...fd.values()].filter(f=>f&&typeof f==='object'&&f.size);
       const cache=await caches.open('iat-shared');
       let i=0;
       for(const f of files){

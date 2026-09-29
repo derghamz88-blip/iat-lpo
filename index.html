@@ -10,6 +10,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>IAT LPO</title>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -915,6 +916,7 @@ function renderSettings(){
           files.push(new File([b],decodeURIComponent(r.headers.get('X-Name')||'lpo'),{type:b.type}));await cache.delete(k)}
         history.replaceState(null,'',location.pathname);
         if(files.length)await addFiles(files);
+        else $('#errs').innerHTML='<div class="note warn">The app opened from Share, but no file arrived. Open the app once from its icon, close it, then share the LPO again.</div>';
       }catch(e){$('#errs').innerHTML=`<div class="note bad">Could not open the shared file: ${esc(e.message)}</div>`}
     }
   }}
