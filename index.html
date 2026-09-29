@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#13303A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="IAT LPO">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>IAT LPO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
@@ -903,6 +906,17 @@ function renderSettings(){
   try{if(await initStore()){showApp();refreshLists();
     // one-time fix: "chilled breast" is tender breast
     for(const[k,v]of Object.entries(names.products))if(/^chilled breast$/i.test(v))await saveName('products',k,'tender breast');
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+    // files shared from WhatsApp through the Android share menu
+    if(/[?&]shared=/.test(location.search)&&'caches' in window){
+      try{
+        const cache=await caches.open('iat-shared'),keys=await cache.keys(),files=[];
+        for(const k of keys){const r=await cache.match(k);const b=await r.blob();
+          files.push(new File([b],decodeURIComponent(r.headers.get('X-Name')||'lpo'),{type:b.type}));await cache.delete(k)}
+        history.replaceState(null,'',location.pathname);
+        if(files.length)await addFiles(files);
+      }catch(e){$('#errs').innerHTML=`<div class="note bad">Could not open the shared file: ${esc(e.message)}</div>`}
+    }
   }}
   catch(e){document.body.insertAdjacentHTML('beforeend',`<div class="wrap"><div class="note bad">Could not start: ${esc(e.message)}</div></div>`)}
 })();
