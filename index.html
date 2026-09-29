@@ -380,7 +380,7 @@ function parseLpo(items){
 
 const BASE_PRODUCTS=['chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
  'wings','liver','gizzard','heart','minced','bone','tender breast',
- 'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast'];
+ 'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast','thigh bl/sl 500','drumsticks 500'];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const q2=n=>String(Math.round(n*1000)/1000);
@@ -658,6 +658,9 @@ function mlsName(base){
   if(b==='thigh')return 'thigh sl 500';
   return b+' 500';
 }
+// Food Fabrique: kg ordered, packed in 500 g trays, except whole chicken and tender (stay in kg)
+const ffTray=b=>!!b&&!['chicken','tender breast'].includes(b.replace(/ 500g?$/,''));
+function ffName(b){if(!b)return b;const x=b.replace(/ 500g?$/,'');return ffTray(x)?x+' 500':x}
 function suggestFor(desc,source){
   const d=String(desc||'').toUpperCase().replace(/BONE\s+LESS/g,'BONELESS').replace(/SKIN\s+LESS/g,'SKINLESS');
   for(const r of (names.rules[source]||[])){
@@ -666,6 +669,7 @@ function suggestFor(desc,source){
   }
   let s=suggestProduct(desc);
   if(source==='MLS')s=mlsName(s);
+  if(source==='FF')s=ffName(s);
   return s;
 }
 const prodKey=(source,l,sug)=>source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${source}|${l.code||nkey(l.desc)}`;
@@ -691,6 +695,7 @@ async function addFiles(files){
         const base=suggestProduct(l.desc);let sugB=base;
         if(r.source==='MLS'){sugB=mlsName(base);
           if(!l.trayDone&&base&&base.replace(/ 500g$/,'')!=='chicken'){l.qty=Math.round(l.qty*2*1000)/1000;l.trayDone=true}}
+        if(r.source==='FF'&&!l.trayDone&&ffTray(base)){l.qty=Math.round(l.qty*2*1000)/1000;l.uom='PCS';l.trayDone=true}
         l.key=prodKey(r.source,l,sugB);
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
