@@ -108,6 +108,14 @@ details.gl summary{cursor:pointer;font-weight:600;color:var(--chill)}
 .drop .pick .btn{flex:1;padding:10px 8px;font-size:16px;cursor:pointer;text-align:center}
 .drop .pick input{display:none}
 .newitem{font-size:11.5px;color:#8A5E00;background:var(--yolk-bg);border-radius:3px;padding:1px 5px;margin:1px 0 2px}
+.ptabs{display:flex;gap:6px;margin:8px 0 2px}
+.ptabs button{flex:1;border:1.5px solid var(--line);background:var(--paper);border-radius:6px;padding:7px;font:700 16px var(--cond);color:var(--steel);cursor:pointer}
+.ptabs button span{font-weight:600;font-size:13px;opacity:.8}
+.ptabs button.on.fresh{background:var(--chill);border-color:var(--chill);color:#fff}
+.ptabs button.on.tender{background:#8A4FA0;border-color:#8A4FA0;color:#fff}
+.card.tender{border-left-color:#8A4FA0}
+.tag.tend{background:#8A4FA0;color:#fff}
+.sendbar .btn.tbtn{background:#8A4FA0}
 #login{max-width:360px;margin:10vh auto;padding:0 16px}
 #login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0 10px;background:#fff}
 details.names{margin-top:28px;background:var(--paper);border:1px solid var(--line);border-radius:6px}
@@ -135,6 +143,7 @@ details.names summary{padding:12px 14px;cursor:pointer;font:600 17px var(--cond)
   <label class="drop" id="drop"><b>Choose LPOs</b><span class="meta">PDFs or MLS pictures · several at once is fine</span>
     <input type="file" id="file" multiple></label>
   <div id="errs"></div>
+  <div class="ptabs" id="ptabs"></div>
   <div id="list"></div>
   <div class="out" id="out" hidden>
     <label class="toggle"><input type="checkbox" id="withPo"> Add the PO number under the name</label>
@@ -700,7 +709,10 @@ async function addFiles(files){
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
         l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';});
-      r.file=f.name;lpos.push(r);
+      r.file=f.name;r.id=Math.random().toString(36).slice(2);
+      const tl=r.lines.filter(isTenderLine),fl=r.lines.filter(l=>!isTenderLine(l));
+      if(tl.length&&fl.length){lpos.push({...r,kind:'fresh',lines:fl});lpos.push({...r,kind:'tender',lines:tl})}
+      else lpos.push({...r,kind:tl.length?'tender':'fresh'});
     }catch(e){errs.push(`${f.name}: can't read this PDF (${e.message}).`)}
   }
   $('#errs').innerHTML=errs.length?`<div class="note bad">${errs.map(esc).join('<br>')}</div>`:'';
@@ -714,10 +726,12 @@ drop.addEventListener('drop',e=>addFiles([...e.dataTransfer.files].filter(f=>/\.
 
 /* ---------- screen ---------- */
 function render(){
-  $('#list').innerHTML=lpos.map((r,i)=>`<div class="card"><div class="hd">
+  const vis=lpos.map((r,i)=>[r,i]).filter(([r])=>r.kind===page);
+  renderTabs();
+  $('#list').innerHTML=(vis.length?'':`<p class="meta" style="text-align:center;padding:18px 0">No ${page} orders${lpos.length?' in these LPOs':''}.</p>`)+vis.map(([r,i])=>`<div class="card ${r.kind}"><div class="hd">
     <div class="top"><input list="dlB" data-b="${i}" value="${esc(r.name)}" aria-label="Customer name">
       <button class="mini ghost" data-cp="${i}">Copy</button><button class="mini wa" data-wa="${i}">Send</button><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>
-    <div class="sub"><span class="tag src">${esc(r.source)}</span><span>PO ${esc(r.po)}</span><span>${esc(r.delivery)}</span>
+    <div class="sub">${r.kind==='tender'?'<span class="tag tend">TENDER</span>':''}<span class="tag src">${esc(r.source)}</span><span>PO ${esc(r.po)}</span><span>${esc(r.delivery)}</span>
       ${r.bSaved?'':'<span class="tag check">check name</span>'}${r.sent?'<span class="tag sent">sent</span>':''}</div>
     <div class="d raw">${esc(r.branch)}</div>
     ${r.image?`<a href="${r.image}" target="_blank" rel="noopener" class="imglink">View picture</a>`:''}
@@ -730,11 +744,20 @@ function render(){
       <td class="dl"><button class="rmv" data-dl="${i}:${j}" aria-label="Delete item">×</button></td></tr>`).join('')}</table>
     <button class="additem" data-add="${i}">+ Add item</button></div>`).join('');
   $('#out').hidden=!lpos.length;
-  document.querySelectorAll('[data-b]').forEach(e=>e.oninput=()=>{lpos[+e.dataset.b].name=e.value;upd()});
+  document.querySelectorAll('[data-b]').forEach(e=>e.oninput=()=>{const r=lpos[+e.dataset.b];lpos.forEach(x=>{if(x.id===r.id)x.name=e.value});upd()});
   document.querySelectorAll('[data-p]').forEach(e=>e.onchange=()=>{
     const[i,j]=e.dataset.p.split(':'),l=lpos[i].lines[j];
     if(e.value==='__other'){const v=prompt('Product name as you write it in the group:',l.short||'');if(v&&v.trim())l.short=v.trim();render();return}
     const was=isWhole(l);l.short=e.value;if(!isWhole(l))l.size='';
+    const card=lpos[i],want=isTenderLine(l)?'tender':'fresh';
+    if(card.kind!==want){
+      card.lines.splice(+j,1);
+      let other=lpos.find(x=>x.id===card.id&&x.kind===want);
+      if(!other){other={...card,kind:want,lines:[],sent:false};lpos.splice(want==='tender'?i+1:i,0,other)}
+      other.lines.push(l);other.sent=false;
+      if(!card.lines.length)lpos.splice(lpos.indexOf(card),1);
+      render();return;
+    }
     if(was!==isWhole(l)){render();return}
     e.classList.toggle('unset',!e.value);upd()});
   document.querySelectorAll('[data-q]').forEach(e=>e.oninput=()=>{const[i,j]=e.dataset.q.split(':');const l=lpos[i].lines[j];l.qty=parseFloat(e.value)||0;l.unverified=false;e.classList.remove('unv');upd()});
@@ -780,12 +803,21 @@ function mergeLines(ls,src){
   return[...m.values()];
 }
 function upd(){
-  const left=lpos.filter(r=>!r.sent),bar=$('#sendbar');
-  bar.hidden=!lpos.length||!$('#settings').hidden;
-  if(!lpos.length)return;
-  const n=lpos.indexOf(left[0])+1;
-  $('#next').textContent=left.length?`Send next: ${left[0].name.trim()||'order'} (${n} of ${lpos.length})`:'All orders sent ✓';
+  const mine=lpos.filter(r=>r.kind===page),left=mine.filter(r=>!r.sent),bar=$('#sendbar');
+  bar.hidden=!mine.length||!$('#settings').hidden;
+  renderTabs();
+  if(!mine.length)return;
+  const n=mine.indexOf(left[0])+1,label=page==='tender'?'Send next tender':'Send next';
+  $('#next').textContent=left.length?`${label}: ${left[0].name.trim()||'order'} (${n} of ${mine.length})`:`All ${page} orders sent ✓`;
   $('#next').disabled=!left.length;
+  $('#next').classList.toggle('tbtn',page==='tender');
+}
+let page='fresh';
+const isTenderLine=l=>/tender/i.test(String(l.short||''));
+function renderTabs(){
+  const c=k=>lpos.filter(r=>r.kind===k).length,u=k=>lpos.filter(r=>r.kind===k&&!r.sent).length;
+  $('#ptabs').innerHTML=['fresh','tender'].map(k=>`<button data-pg="${k}" class="${k===page?'on':''} ${k}">${k==='fresh'?'Fresh':'Tender'}${c(k)?` <span>${u(k)}/${c(k)}</span>`:''}</button>`).join('');
+  document.querySelectorAll('#ptabs button').forEach(b=>b.onclick=()=>{page=b.dataset.pg;render();window.scrollTo(0,0)});
 }
 async function copyText(t,btn,label){
   let ok=false;
@@ -808,7 +840,7 @@ async function remember(only){
   markSaved();
 }
 $('#next').onclick=async()=>{
-  const r=lpos.find(x=>!x.sent);if(!r)return;
+  const r=lpos.find(x=>x.kind===page&&!x.sent);if(!r)return;
   if(r.lines.some(l=>!l.short.trim()&&l.qty>0)&&!confirm(`${r.name}: some items have no name and will be left out. Send anyway?`))return;
   if(r.lines.some(l=>l.unverified)&&!confirm(`${r.name}: some quantities were not confirmed from the picture. Did you check them?`))return;
   remember(r);if(await shareText(msg(r))){r.sent=true;render()}
@@ -827,7 +859,7 @@ function refreshLists(){
 /* ---------- settings: one tab per LPO format ---------- */
 let sTab='GMG';
 $('#setBtn').onclick=()=>{const on=$('#settings').hidden;$('#settings').hidden=!on;$('#app').hidden=on;$('#setBtn').textContent=on?'Back':'Settings';
-  $('#sendbar').hidden=on||!lpos.length;if(on)renderSettings();window.scrollTo(0,0)};
+  $('#sendbar').hidden=on||!lpos.some(r=>r.kind===page);if(on)renderSettings();window.scrollTo(0,0)};
 function reapply(){lpos.forEach(r=>r.lines.forEach(l=>{if(!l.manual&&!names.products[l.key])l.short=suggestFor(l.desc,r.source)}));render()}
 function renderSettings(){
   if($('#settings').hidden)return;
