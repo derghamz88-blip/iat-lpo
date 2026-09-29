@@ -350,7 +350,7 @@ const PARSERS=[
 
 const PRODUCT_RULES=[
  [['TENDER'],'tender breast'],
- [['CHILLED','BREAST'],'chilled breast'],
+ [['CHILLED','BREAST'],'tender breast'],
  [['THIGH','SKINLES'],'thigh bl/sl'],[['BRST'],'breast'],
  [['BONELESS','THIGH','S/LES'],'thigh bl/sl'],[['BONELESS','THIGH','SKINLESS'],'thigh bl/sl'],
  [['BONELESS','THIGH'],'thigh bl/so'],[['BONELESS','LEG'],'whole legs bl/so'],
@@ -368,9 +368,9 @@ function suggestBranch(raw,source){
   if(source==='MLS')r='M L S '+raw.replace(/([a-z])([A-Z])/g,'$1 $2');
   if(source==='BEAST'){const p=raw.split(/\s+-\s+/);r='Beast Meat '+(p[1]||p[0])}
   if(source==='FF'){const m=raw.match(/^(.*?)\s*\(/);r='Food Fabrique '+(m?m[1]:raw)}
-  if(source==='TMA')r=/FZCO/i.test(raw)?'Jabal lubnan':raw.replace(/L\.?L\.?C\.?$/i,'LLC');
+  if(source==='TMA')r=/FZCO/i.test(raw)?'Jabal lubnan':/TRADING/i.test(raw)?'Meat avenue':raw.replace(/L\.?L\.?C\.?$/i,'LLC');
   if(source==='GMG')r=raw.replace(/^GEANT EXPRESS\s*-\s*/i,'Geant - ').replace(/^GEANT\s*-\s*/i,'Geant - ');
-  if(r==='Jabal lubnan')return r;
+  if(r==='Jabal lubnan'||r==='Meat avenue')return r;
   return r.replace(/\s*[-–]\s*/g,' - ').split(/\s+/)
     .map(w=>w==='-'||['MLS','GMG','JLT','JVC','UAE','DIP','JBR','FZCO','LLC','FZE'].includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
 }
