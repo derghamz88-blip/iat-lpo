@@ -900,7 +900,10 @@ function renderSettings(){
 }
 
 (async()=>{
-  try{if(await initStore()){showApp();refreshLists()}}
+  try{if(await initStore()){showApp();refreshLists();
+    // one-time fix: "chilled breast" is tender breast
+    for(const[k,v]of Object.entries(names.products))if(/^chilled breast$/i.test(v))await saveName('products',k,'tender breast');
+  }}
   catch(e){document.body.insertAdjacentHTML('beforeend',`<div class="wrap"><div class="note bad">Could not start: ${esc(e.message)}</div></div>`)}
 })();
 </script>
