@@ -391,7 +391,7 @@ function parseLpo(items){
   return{source:p.id,...r};
 }
 
-const BASE_PRODUCTS=['chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
+const BASE_PRODUCTS=['chicken','whole chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
  'wings','liver','gizzard','heart','minced','bone','tender breast',
  'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast','thigh bl/sl 500','drumsticks 500'];
 const $=s=>document.querySelector(s);
@@ -712,7 +712,13 @@ async function addFiles(files){
         l.key=prodKey(r.source,l,sugB);
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
-        l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';});
+        l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';
+});
+      // whole chicken by count: Beast Meat keeps the number with the PO size;
+      // Meat Avenue: biggest line x1.1 -> 1100, the others x1.2 -> 1200
+      {const isCh=l=>/^(whole )?chicken$/i.test(String(l.short||'').trim());
+       if(r.source==='BEAST')r.lines.filter(isCh).forEach(l=>{const sz=(String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i)||[])[1];l.short='whole chicken';l.uom='PCS';l.size=sz||''});
+       if(r.source==='TMA')r.lines.filter(isCh).sort((a,b)=>b.qty-a.qty).forEach((l,k)=>{l.qty=Math.round(l.qty*(k?1.2:1.1)*1000)/1000;l.short='whole chicken';l.uom='PCS';l.size=k?'1200':'1100'});}
       r.file=f.name;r.id=Math.random().toString(36).slice(2);
       const tl=r.lines.filter(isTenderLine),fl=r.lines.filter(l=>!isTenderLine(l));
       if(tl.length&&fl.length){lpos.push({...r,kind:'fresh',lines:fl});lpos.push({...r,kind:'tender',lines:tl})}
