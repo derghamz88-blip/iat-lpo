@@ -248,7 +248,7 @@ function readByColumns(lines,cfg){
     const isRow=toks.length>3&&/^\d{1,3}$/.test(toks[0].str.trim())&&/^\d{5,8}$/.test(toks[1].str.trim());
     if(isRow){
       const codeEnd=toks[2]&&/^\d{4,14}$/.test(toks[2].str.trim())?toks[2].x+20:toks[1].x+20;
-      cur={code:toks[1].str.trim(),desc:[],uom:'KG',qty:null,codeEnd};rows.push(cur);
+      cur={code:toks[1].str.trim(),barcode:(toks[2]&&/^\d{4,14}$/.test(toks[2].str.trim()))?toks[2].str.trim():'',desc:[],uom:'KG',qty:null,codeEnd};rows.push(cur);
       for(const t of toks){
         const v=t.str.trim();
         if(t.x>codeEnd&&t.x<xBrand-50)cur.desc.push(v);
@@ -261,7 +261,7 @@ function readByColumns(lines,cfg){
       if(words.length&&toks.every(t=>t.x>cur.codeEnd&&t.x<xBrand-50))cur.desc.push(...words);
     }
   }
-  return rows.map(r=>({code:r.code,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty})).filter(r=>r.desc&&r.qty>0);
+  return rows.map(r=>({code:r.code,barcode:r.barcode,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty})).filter(r=>r.desc&&r.qty>0);
 }
 
 const PARSERS=[
@@ -352,6 +352,28 @@ const PARSERS=[
   }},
 ];
 
+// ===== Product by item code / barcode = source of truth (checked before any name rule) =====
+// Key: SOURCE|item code. Value: the base product name (same style as suggestProduct output).
+const CODE_PRODUCTS={
+ 'UNION|642313':'chicken','UNION|642314':'breast','UNION|642315':'whole legs','UNION|642316':'thigh',
+ 'UNION|642317':'drumsticks','UNION|642318':'liver','UNION|642319':'gizzard','UNION|642320':'heart',
+ 'UNION|642321':'wings','UNION|642322':'tender breast',
+ 'UNION|635709':'frozen chicken','UNION|635716':'frozen breast bl/sl',
+ 'MLS|FS-00094':'chicken','MLS|FS-00004':'heart','MLS|FS-00089':'breast','MLS|FS-00090':'drumsticks',
+ 'MLS|FS-00092':'thigh','MLS|FS-00093':'wings'};
+// Union barcode -> Union item no (either one identifies the product)
+const UNION_BARCODES={'52002':'642313','52003':'642314','52004':'642315','52005':'642316','52006':'642317','52007':'642318',
+ '52008':'642319','52010':'642321','52011':'642322','51159':'635709','51166':'635716'};
+function codeProduct(source,code,barcode){
+  const c=String(code||'').trim().toUpperCase(),b=String(barcode||'').trim();
+  if(CODE_PRODUCTS[source+'|'+c])return CODE_PRODUCTS[source+'|'+c];
+  if(source==='UNION'){
+    const viaBar=UNION_BARCODES[b]||UNION_BARCODES[c];
+    if(viaBar&&CODE_PRODUCTS['UNION|'+viaBar])return CODE_PRODUCTS['UNION|'+viaBar];
+  }
+  return '';
+}
+
 const PRODUCT_RULES=[
  [['TENDER'],'tender breast'],
  [['CHILLED','BREAST'],'tender breast'],
@@ -393,7 +415,8 @@ function parseLpo(items){
 
 const BASE_PRODUCTS=['chicken','whole chicken','breast','thigh','thigh bl/sl','thigh bl/so','drumsticks','whole legs','whole legs bl/so',
  'wings','liver','gizzard','heart','minced','bone','tender breast',
- 'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast','thigh bl/sl 500','drumsticks 500'];
+ 'breast 500','thigh sl 500','drumsticks sl 500','wings 500','chicken 1000g','chilled breast','thigh bl/sl 500','drumsticks 500',
+ 'frozen chicken','frozen breast bl/sl'];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const q2=n=>String(Math.round(n*1000)/1000);
@@ -557,12 +580,15 @@ async function readMlsImage(file,status){
 /* ---------- Union Coop: photos of branch order forms (OCR) ---------- */
 const U_ITEMS={'642313':['FRESH WHOLE CHICKEN',[18]],'642314':['FRESH CHICKEN BREAST',[40]],'642315':['FRESH CHICKEN WHOLE LEG',[21.2,19]],
  '642316':['CHICKEN THIGH',[20.15]],'642317':['CHICKEN DRUMSTICKS',[16,24.5]],'642318':['CHICKEN LIVER',[18]],'642319':['CHICKEN GIZZARD',[18]],
- '642320':['CHICKEN HEART',[18]],'642321':['CHICKEN WINGS',[19.1]],'642322':['CHICKEN BREAST TENDERIZED',[18]]};
+ '642320':['CHICKEN HEART',[18]],'642321':['CHICKEN WINGS',[19.1]],'642322':['CHICKEN BREAST TENDERIZED',[18]],
+ '635709':['FROZEN WHOLE CHICKEN',[10.7]],'635716':['CHICKEN BREAST B/L S/L',[14.8]]};
 const U_PRICES=[...new Set(Object.values(U_ITEMS).flatMap(v=>v[1]))];
 const U_BRANCHES={'10204':'Towar','10205':'Mankhool','10206':'Jumeirah','10207':'Aweer','10208':'Barsha','10210':'Hamriya','10211':'Rashidiya',
- '10212':'Al Wasl','10219':'Nad Al Sheba','10222':'Al Barsha South-SMBRHE','10223':'Al Warqa','10225':'Jumeirah First','10226':'Al Barsha Hessa ST',
+ '10212':'Al Wasl','10215':'Umm Suqeim 2','10219':'Nad Al Sheba','10222':'Al Barsha South-SMBRHE','10223':'Al Warqa','10225':'Jumeirah First','10226':'Al Barsha Hessa ST',
  '10227':'Nad Al Hamer','10230':'Motor City','10231':'Al Nahda','10233':'Nad Al Sheba-Mall','10235':'Rukan Community','10236':'Al Khawaneej 2'};
-const uItem=t=>{const d=String(t).replace(/\D/g,'');return U_ITEMS[d]?d:null};
+const uItem=t=>{const raw=String(t).trim(),d=raw.replace(/\D/g,'');if(U_ITEMS[d])return d;
+  // barcode (5 digits, no dot/comma, so amounts like 520.02 never match)
+  if(/^\d{5}$/.test(raw)&&UNION_BARCODES[raw])return UNION_BARCODES[raw];return null};
 const uMoney=t=>{const s=String(t).replace(/,/g,'');return /^\d*\.\d{2}$/.test(s)?parseFloat(s):null};
 function rotCanvas(src,deg){
   const r=deg*Math.PI/180,s=Math.abs(Math.sin(r)),c=Math.abs(Math.cos(r));
@@ -583,7 +609,9 @@ async function readUnionImage(file,status){
   const res={},seen=new Set(),rowY={},unknown=[];let text='',chosen=null;
   const tripleFor=(vals,prices)=>{for(let i=0;i<vals.length;i++)for(let j=i+1;j<vals.length;j++)for(let k=j+1;k<vals.length;k++){
     const[a,b,c]=[vals[i],vals[j],vals[k]];if(a>0&&prices.includes(b)&&Math.abs(a*b-c)<0.02)return a}return null};
-  const byName=t=>{const s=suggestProduct(t);return s?Object.keys(U_ITEMS).find(c=>suggestProduct(U_ITEMS[c][0])===s)||null:null};
+  const byName=t=>{
+    if(/FROZEN/i.test(t))return '635709';if(/B\s*\/\s*L/i.test(t)&&/BREAST/i.test(t))return '635716';
+    const s=suggestProduct(t);return s?Object.keys(U_ITEMS).filter(c=>!/^6357/.test(c)).find(c=>suggestProduct(U_ITEMS[c][0])===s)||null:null};
   const firstGuess={};
   for(const rot of[0,90,270,180]){
     status(`Looking for the table${rot?' (turning the picture)':''}…`);
@@ -685,6 +713,12 @@ function suggestFor(desc,source){
   if(source==='FF')s=ffName(s);
   return s;
 }
+// code / barcode first (source of truth), then the customer's reading rules, then the built-in name rules
+function suggestForLine(l,source){
+  const cp=codeProduct(source,l.code,l.barcode);
+  if(cp){let s=cp;if(source==='MLS')s=mlsName(s);if(source==='FF')s=ffName(s);return s}
+  return suggestFor(l.desc,source);
+}
 const prodKey=(source,l,sug)=>source==='MLS'?`MLS|${sug||nkey(l.desc)}`:`${source}|${l.code||nkey(l.desc)}`;
 async function addFiles(files){
   const errs=[];const st=m=>$('#errs').innerHTML=`<p class="meta"><span class="spin"></span> ${esc(m)}</p>`;
@@ -705,12 +739,12 @@ async function addFiles(files){
       const bKey=branchKey(r.source,r.branch);
       r.bKey=bKey;r.bSaved=!!names.branches[bKey];r.name=names.branches[bKey]||suggestBranch(r.branch,r.source);
       r.lines.forEach(l=>{
-        const base=suggestProduct(l.desc);let sugB=base;
+        const cp=codeProduct(r.source,l.code,l.barcode);const base=cp||suggestProduct(l.desc);let sugB=base;
         if(r.source==='MLS'){sugB=mlsName(base);
           if(!l.trayDone&&base&&base.replace(/ 500g$/,'')!=='chicken'){l.qty=Math.round(l.qty*2*1000)/1000;l.trayDone=true}}
         if(r.source==='FF'&&!l.trayDone&&ffTray(base)){l.qty=Math.round(l.qty*2*1000)/1000;l.uom='PCS';l.trayDone=true}
         l.key=prodKey(r.source,l,sugB);
-        l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestFor(l.desc,r.source);
+        l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestForLine(l,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
         l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';
 });
@@ -870,7 +904,7 @@ function refreshLists(){
 let sTab='GMG';
 $('#setBtn').onclick=()=>{const on=$('#settings').hidden;$('#settings').hidden=!on;$('#app').hidden=on;$('#setBtn').textContent=on?'Back':'Settings';
   $('#sendbar').hidden=on||!lpos.some(r=>r.kind===page);if(on)renderSettings();window.scrollTo(0,0)};
-function reapply(){lpos.forEach(r=>r.lines.forEach(l=>{if(!l.manual&&!names.products[l.key])l.short=suggestFor(l.desc,r.source)}));render()}
+function reapply(){lpos.forEach(r=>r.lines.forEach(l=>{if(!l.manual&&!names.products[l.key])l.short=suggestForLine(l,r.source)}));render()}
 function renderSettings(){
   if($('#settings').hidden)return;
   $('#stabs').innerHTML=SOURCES.map(([id,n])=>`<button data-t="${id}" class="${id===sTab?'on':''}">${esc(n)}</button>`).join('');
