@@ -748,11 +748,11 @@ async function addFiles(files){
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
         l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';
 });
-      // whole chicken by count: Beast Meat keeps the number with the PO size;
-      // Meat Avenue: biggest line x1.1 -> 1100, the others x1.2 -> 1200
+      // whole chicken by count: Beast Meat: kg / PO size = number of birds (66 kg of 1100 g = 60);
+      // Meat Avenue: same number, biggest line -> 1100, the others -> 1200
       {const isCh=l=>/^(whole )?chicken$/i.test(String(l.short||'').trim());
-       if(r.source==='BEAST')r.lines.filter(isCh).forEach(l=>{const sz=(String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i)||[])[1];l.short='whole chicken';l.uom='PCS';l.size=sz||''});
-       if(r.source==='TMA')r.lines.filter(isCh).sort((a,b)=>b.qty-a.qty).forEach((l,k)=>{l.qty=Math.round(l.qty*(k?1.2:1.1)*1000)/1000;l.short='whole chicken';l.uom='PCS';l.size=k?'1200':'1100'});}
+       if(r.source==='BEAST')r.lines.filter(isCh).forEach(l=>{const sz=(String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i)||[])[1];if(sz&&/^KGS?$/.test(l.uom))l.qty=Math.round(l.qty/(parseInt(sz,10)/1000));l.short='whole chicken';l.uom='PCS';l.size=sz||''});
+       if(r.source==='TMA')r.lines.filter(isCh).sort((a,b)=>b.qty-a.qty).forEach((l,k)=>{l.short='whole chicken';l.uom='PCS';l.size=k?'1200':'1100'});}
       r.file=f.name;r.id=Math.random().toString(36).slice(2);
       const tl=r.lines.filter(isTenderLine),fl=r.lines.filter(l=>!isTenderLine(l));
       if(tl.length&&fl.length){lpos.push({...r,kind:'fresh',lines:fl});lpos.push({...r,kind:'tender',lines:tl})}
