@@ -283,8 +283,10 @@ const PARSERS=[
     const po=((flat.match(/\bBP\s*(\d{6,})/)||[])[1])||'';
     const delivery=(flat.match(/Requested Delivery Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i)||[])[1]||'';
     const bl=lines.find(l=>/\bBranch\b/.test(l.text)&&/\b\d{5}\b/.test(l.text)&&!/ORDER FORM/i.test(l.text))||lines.find(l=>/\d{5}\s+[A-Za-z].*Branch/.test(l.text));
-    const m=bl&&bl.text.match(/\b\d{5}\s+(.+?Branch)\b/i);
-    const branch=m?m[1].trim():'';
+    const m=bl&&bl.text.match(/\b(\d{5})\s+(.+?Branch)\b/i);
+    // branches renamed / told apart by the branch number (two Jumeirah; Nad Al Sheba Mall = Nakheel)
+    const UB={'10206':'Jumeirah Safa Branch','10225':'Jumeirah First Branch','10233':'Nakheel Branch','10226':'Hessa Branch'};
+    const branch=m?(UB[m[1]]||m[2].trim()):'';
     const rows=readByColumns(lines,{headerRe:/^Sr\.?$/i,brandRe:/^Brand$/i,qtyRe:/^Quantity$/i,afterQtyRe:/^G \/ Cost/i,
       stopRe:/^(TOTAL|.*Delivery Should be made|.*TOTAL\s+[\d,.]+)/i});
     return {po,delivery,branch,lines:rows};
@@ -583,9 +585,9 @@ const U_ITEMS={'642313':['FRESH WHOLE CHICKEN',[18]],'642314':['FRESH CHICKEN BR
  '642320':['CHICKEN HEART',[18]],'642321':['CHICKEN WINGS',[19.1]],'642322':['CHICKEN BREAST TENDERIZED',[18]],
  '635709':['FROZEN WHOLE CHICKEN',[10.7]],'635716':['CHICKEN BREAST B/L S/L',[14.8]]};
 const U_PRICES=[...new Set(Object.values(U_ITEMS).flatMap(v=>v[1]))];
-const U_BRANCHES={'10204':'Towar','10205':'Mankhool','10206':'Jumeirah','10207':'Aweer','10208':'Barsha','10210':'Hamriya','10211':'Rashidiya',
- '10212':'Al Wasl','10215':'Umm Suqeim 2','10219':'Nad Al Sheba','10222':'Al Barsha South-SMBRHE','10223':'Al Warqa','10225':'Jumeirah First','10226':'Al Barsha Hessa ST',
- '10227':'Nad Al Hamer','10230':'Motor City','10231':'Al Nahda','10233':'Nad Al Sheba-Mall','10235':'Rukan Community','10236':'Al Khawaneej 2'};
+const U_BRANCHES={'10204':'Towar','10205':'Mankhool','10206':'Jumeirah Safa','10207':'Aweer','10208':'Barsha','10210':'Hamriya','10211':'Rashidiya',
+ '10212':'Al Wasl','10215':'Umm Suqeim 2','10219':'Nad Al Sheba','10222':'Al Barsha South-SMBRHE','10223':'Al Warqa','10225':'Jumeirah First','10226':'Hessa',
+ '10227':'Nad Al Hamer','10230':'Motor City','10231':'Al Nahda','10233':'Nakheel','10235':'Rukan Community','10236':'Al Khawaneej 2'};
 const uItem=t=>{const raw=String(t).trim(),d=raw.replace(/\D/g,'');if(U_ITEMS[d])return d;
   // barcode (5 digits, no dot/comma, so amounts like 520.02 never match)
   if(/^\d{5}$/.test(raw)&&UNION_BARCODES[raw])return UNION_BARCODES[raw];return null};
