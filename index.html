@@ -282,8 +282,10 @@ const PARSERS=[
   parse(lines,flat){
     const po=((flat.match(/\bBP\s*(\d{6,})/)||[])[1])||'';
     const delivery=(flat.match(/Requested Delivery Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i)||[])[1]||'';
-    const bl=lines.find(l=>/\bBranch\b/.test(l.text)&&/\b\d{5}\b/.test(l.text)&&!/ORDER FORM/i.test(l.text))||lines.find(l=>/\d{5}\s+[A-Za-z].*Branch/.test(l.text));
-    const m=bl&&bl.text.match(/\b(\d{5})\s+(.+?Branch)\b/i);
+    const bl=lines.find(l=>/\bBranch\b/.test(l.text)&&/\b\d{5}\b/.test(l.text)&&!/ORDER FORM/i.test(l.text))||lines.find(l=>/\d{5}\s+[A-Za-z].*Branch/.test(l.text))
+      ||lines.find(l=>/\b102\d{2}\s+[A-Za-z]/.test(l.text));   // some forms print "10235 Rukan Community" without the word Branch
+    let m=bl&&bl.text.match(/\b(\d{5})\s+(.+?Branch)\b/i);
+    if(!m&&bl){const m2=bl.text.match(/\b(102\d{2})\s+([A-Za-z][A-Za-z0-9 .&'\-]*?)(?:\s+TO\s+M\/s|\s*$)/i);if(m2)m=[m2[0],m2[1],m2[2].trim()+' Branch']}
     // branches renamed / told apart by the branch number (two Jumeirah; Nad Al Sheba Mall = Nakheel)
     const UB={'10206':'Jumeirah Safa Branch','10225':'Jumeirah First Branch','10233':'Nakheel Branch','10226':'Hessa Branch'};
     const branch=m?(UB[m[1]]||m[2].trim()):'';
@@ -749,6 +751,8 @@ async function addFiles(files){
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestForLine(l,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
         l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';
+        l.frozen=base==='frozen chicken'?'whole':base==='frozen breast bl/sl'?'breast':'';
+        frozenAdjust(l);
 });
       // whole chicken by count: Beast Meat: kg / PO size = number of birds (66 kg of 1100 g = 60);
       // Meat Avenue: same number, biggest line -> 1100, the others -> 1200
@@ -784,8 +788,8 @@ function render(){
     ${r.lines.some(l=>!l.short&&!l.manual)?'<div class="note warn" style="margin:4px 0 0;padding:4px 8px;font-size:13px">New item in this LPO. Pick its name from the list; it is remembered by its item number for next time.</div>':''}
     ${r.lines.some(l=>l.unverified)?'<div class="note bad" style="margin:4px 0 0;padding:4px 8px;font-size:13px">Red quantities were not confirmed. Check them against the picture.</div>':''}</div>
     <table>${r.lines.map((l,j)=>`<tr><td><select data-p="${i}:${j}" class="${l.short?'':'unset'}" aria-label="Product">${prodOpts(l.short)}</select>
-      ${!l.short&&!l.manual?`<div class="newitem">New item${l.code?` <b>#${esc(l.code)}</b>`:''}: ${esc(l.desc)}</div>`:`<div class="d desc">${esc(l.desc)}</div>`}${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}</td>
-      <td class="sz">${isWhole(l)?`<select data-sz="${i}:${j}" aria-label="Bird size">${sizeOpts(l.size)}</select>`:''}</td>
+      ${!l.short&&!l.manual?`<div class="newitem">New item${l.code?` <b>#${esc(l.code)}</b>`:''}: ${esc(l.desc)}</div>`:`<div class="d desc">${esc(l.desc)}</div>`}${/^(KGS?|PCS)$/.test(l.uom)?'':` <span class="tag bad">${esc(l.uom)}</span>`}${l.fnote?` <span class="tag${/less than/.test(l.fnote)?' bad':''}">${esc(l.fnote)}</span>`:''}</td>
+      <td class="sz">${isWhole(l)?`<select data-sz="${i}:${j}" aria-label="Bird size">${sizeOpts(l.size)}</select>`:l.frozen?`<select data-fz="${i}:${j}" aria-label="Carton">${(l.frozen==='whole'?['1000','1100','1200','1300']:['12','15']).map(v=>`<option value="${v}"${v===(l.fz||(l.frozen==='whole'?frozenCfg().whole:frozenCfg().breast))?' selected':''}>${l.frozen==='whole'?v:v+' kg'}</option>`).join('')}</select>`:''}</td>
       <td class="q"><input inputmode="decimal" data-q="${i}:${j}" value="${l.qty?q2(l.qty):''}" placeholder="qty" aria-label="Quantity" class="${l.unverified?'unv':''}"></td>
       <td class="dl"><button class="rmv" data-dl="${i}:${j}" aria-label="Delete item">×</button></td></tr>`).join('')}</table>
     <button class="additem" data-add="${i}">+ Add item</button></div>`).join('');
@@ -808,6 +812,7 @@ function render(){
     e.classList.toggle('unset',!e.value);upd()});
   document.querySelectorAll('[data-q]').forEach(e=>e.oninput=()=>{const[i,j]=e.dataset.q.split(':');const l=lpos[i].lines[j];l.qty=parseFloat(e.value)||0;l.unverified=false;e.classList.remove('unv');upd()});
   document.querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{lpos.splice(+e.dataset.rm,1);render()});
+  document.querySelectorAll('[data-fz]').forEach(e=>e.onchange=()=>{const[i,j]=e.dataset.fz.split(':'),l=lpos[i].lines[j];l.fz=e.value;frozenAdjust(l);render()});
   document.querySelectorAll('[data-sz]').forEach(e=>e.onchange=()=>{const[i,j]=e.dataset.sz.split(':'),l=lpos[i].lines[j];
     if(e.value==='__other'){const v=(prompt('Bird size (grams):',l.size||'')||'').replace(/\D/g,'');l.size=v;render();return}
     l.size=e.value;upd()});
@@ -821,6 +826,18 @@ function render(){
     if(r.lines.some(l=>l.unverified)&&!confirm('Some quantities were not confirmed from the image. Did you check them?'))return;
     remember(r);if(await shareText(msg(r))){r.sent=true;render()}});
   upd();
+}
+// frozen stock is ordered by the carton: whole chicken carton = size/100 kg (1100 g -> 11 kg), breast carton = 12 or 15 kg.
+// The LPO kg is rounded DOWN to whole cartons (we never send more than the customer asked for).
+const frozenCfg=()=>({whole:String((names.opts.FROZEN||{}).whole||'1100'),breast:String((names.opts.FROZEN||{}).breast||'12')});
+function frozenAdjust(l){
+  if(!l.frozen||!/^KGS?$/i.test(l.uom))return;
+  const f=frozenCfg(),val=l.fz||(l.frozen==='whole'?f.whole:f.breast),carton=l.frozen==='whole'?parseInt(val,10)/100:parseFloat(val);
+  if(l.raw==null)l.raw=l.qty;
+  const ctn=Math.floor(l.raw/carton+1e-9);
+  l.qty=Math.round(ctn*carton*1000)/1000;
+  l.extra=l.frozen==='whole'?val:val+'kg';
+  l.fnote=`${l.raw} kg → ${ctn} carton${ctn===1?'':'s'} × ${carton} kg`+(ctn<1?' · less than one carton!':'');
 }
 const unitOf=(u,src)=>/^KGS?$/.test(u)?((names.opts[src]||{}).kg??'kg'):/^(PCS|PC|EA|EACH|NOS|UNIT)$/.test(u)?'':String(u||'').toLowerCase();
 function msg(r){
@@ -844,7 +861,7 @@ function prodOpts(cur){
 function markSaved(){document.querySelectorAll('.tag.check').forEach(t=>{t.className='tag saved';t.textContent='saved'})}
 function mergeLines(ls,src){
   const m=new Map();
-  ls.filter(l=>l.short.trim()&&l.qty>0).forEach(l=>{const name=l.short.trim()+(isWhole(l)&&l.size?' '+l.size:'');const k=name+'|'+unitOf(l.uom,src);
+  ls.filter(l=>l.short.trim()&&l.qty>0).forEach(l=>{const name=l.short.trim()+(isWhole(l)&&l.size?' '+l.size:'')+(l.extra?' '+l.extra:'');const k=name+'|'+unitOf(l.uom,src);
     if(m.has(k))m.get(k).qty+=l.qty;else m.set(k,{short:name,uom:l.uom,qty:l.qty})});
   return[...m.values()];
 }
@@ -925,6 +942,11 @@ function renderSettings(){
   <section class="sset"><h3>Weight unit</h3>
     <div class="srow"><span class="t">Write kilograms as</span><select id="kgopt" style="width:120px;flex:none">${['kg','KG','Kg','kgs',''].map(v=>`<option value="${v}"${v===kg?' selected':''}>${v?v:'(nothing)'}</option>`).join('')}</select></div>
   </section>
+  ${sTab==='UNION'?`<section class="sset"><h3>Frozen stock (cartons)</h3>
+    <p class="meta">Frozen is written in whole cartons, never more than the LPO asks (150 kg of 11 kg cartons = 143 kg).</p>
+    <div class="srow"><span class="t">Frozen whole chicken size</span><select id="frw" style="width:120px;flex:none">${['1000','1100','1200','1300'].map(v=>`<option value="${v}"${v===frozenCfg().whole?' selected':''}>${v} g (${v/100} kg ctn)</option>`).join('')}</select></div>
+    <div class="srow"><span class="t">Frozen breast carton</span><select id="frb" style="width:120px;flex:none">${['12','15'].map(v=>`<option value="${v}"${v===frozenCfg().breast?' selected':''}>${v} kg</option>`).join('')}</select></div>
+  </section>`:''}
   <section class="sset"><h3>Customer names</h3>
     ${br.map(([k,v])=>`<div class="srow"><span class="t"><small>${esc(k.slice(pre.length))}</small><input data-bk="${esc(k)}" value="${esc(v)}"></span><button class="del" data-db="${esc(k)}">Delete</button></div>`).join('')||'<div class="srow meta">No saved customer names yet. They are saved when you send an order.</div>'}
   </section>
@@ -936,6 +958,8 @@ function renderSettings(){
     if(!w||!p||p==='__other'){alert('Type the words and pick the product.');return}
     await saveName('rules',sTab,[...rules,{w,p}]);renderSettings();reapply()};
   sb.querySelectorAll('[data-rr]').forEach(b=>b.onclick=async()=>{const n=rules.slice();n.splice(+b.dataset.rr,1);await saveName('rules',sTab,n);renderSettings();reapply()});
+  const fz=async()=>{await saveName('opts','FROZEN',{whole:$('#frw').value,breast:$('#frb').value});lpos.forEach(r=>r.lines.forEach(l=>{if(l.frozen){l.fz='';frozenAdjust(l)}}));render()};
+  if($('#frw'))$('#frw').onchange=fz;if($('#frb'))$('#frb').onchange=fz;
   $('#kgopt').onchange=async e=>{await saveName('opts',sTab,{...(names.opts[sTab]||{}),kg:e.target.value});render()};
   sb.querySelectorAll('[data-bk]').forEach(i=>i.onchange=async()=>{if(i.value.trim())await saveName('branches',i.dataset.bk,i.value.trim());lpos.forEach(r=>{if(r.bKey===i.dataset.bk)r.name=i.value.trim()});render()});
   sb.querySelectorAll('[data-db]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this saved customer name?'))return;await removeName('branches',b.dataset.db);renderSettings()});
