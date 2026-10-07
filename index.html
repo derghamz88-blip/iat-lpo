@@ -190,7 +190,7 @@ const findItem=(lines,re,from=0)=>{for(let i=from;i<lines.length;i++){const it=l
 const inRange=(it,a,b)=>it.x>=a&&it.x<b;
 const num=s=>parseFloat(String(s).replace(/,/g,''));
 
-const UOM_RE=/^(KG|KGS|PCS|PC|EA|EACH|CTN|PKT|PACK|NOS|BOX|TRAY|TRY|UNIT)$/i;
+const UOM_RE=/^(KG|KGS|PCS|PC|EA|EACH|CT|CTN|CARTON|PKT|PACK|NOS|BOX|TRAY|TRY|UNIT)$/i;
 // Row-based table: a row starts with number codes; then description words; then UOM; then qty.
 // Lines in between that hold only words are the wrapped rest of the description.
 function readRows(lines,cfg){
@@ -256,12 +256,15 @@ function readByColumns(lines,cfg){
       }
       const u=toks.filter(t=>t.x>xBrand&&t.x<xQty-15&&UOM_RE.test(t.str.trim()));
       if(u.length)cur.uom=u[u.length-1].str.trim().toUpperCase();
+      // item packing like "10kg" = kg per carton (used when the unit is CT)
+      const pk=toks.find(t=>t.x>xBrand&&t.x<xQty-15&&/^\d+(?:[.,]\d+)?\s*KG$/i.test(t.str.trim()));
+      if(pk)cur.pack=num(pk.str.trim().replace(/kg/i,''));
     }else if(cur){
       const words=toks.filter(t=>t.x>cur.codeEnd&&t.x<xBrand-50).map(t=>t.str.trim());
       if(words.length&&toks.every(t=>t.x>cur.codeEnd&&t.x<xBrand-50))cur.desc.push(...words);
     }
   }
-  return rows.map(r=>({code:r.code,barcode:r.barcode,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty})).filter(r=>r.desc&&r.qty>0);
+  return rows.map(r=>({code:r.code,barcode:r.barcode,desc:r.desc.join(' ').replace(/\s+/g,' ').trim(),uom:r.uom,qty:r.qty,pack:r.pack})).filter(r=>r.desc&&r.qty>0);
 }
 
 const PARSERS=[
@@ -331,7 +334,12 @@ const PARSERS=[
       const left=L.items.filter(x=>x.x<xl).map(x=>x.str.trim()).filter(Boolean);
       if(dt){if(!delivery)delivery=dt.str.trim().slice(0,10);cur={code:'',desc:left.join(' '),uom:'KG',qty:null};rows.push(cur)}
       else if(cur&&left.length)cur.desc+=' '+left.join(' ');
-      if(cur&&cur.qty==null){const q=L.items.map(x=>x.str.trim()).find(v=>/^[\d,]+\.\d{3}(\s*kg)?$/i.test(v));if(q)cur.qty=num(q.replace(/\s*kg/i,''))}
+      if(cur&&cur.qty==null){
+        const vs=L.items.map(x=>x.str.trim());
+        let q=vs.find(v=>/^[\d,]+\.\d{3}(\s*kg)?$/i.test(v));
+        // some PDFs glue the date and the quantity into one text item: "04/10/2026 15:55:00 100.000 kg"
+        if(!q){const mm=vs.map(v=>v.match(/\d{2}:\d{2}:\d{2}\s+([\d,]+\.\d{3})\s*kg\b/i)).find(Boolean);if(mm)q=mm[1]}
+        if(q)cur.qty=num(q.replace(/\s*kg/i,''))}
     }
     return {po,delivery,branch,lines:rows.filter(r=>r.desc&&r.qty>0)};
   }},
@@ -362,7 +370,7 @@ const CODE_PRODUCTS={
  'UNION|642313':'chicken','UNION|642314':'breast','UNION|642315':'whole legs','UNION|642316':'thigh',
  'UNION|642317':'drumsticks','UNION|642318':'liver','UNION|642319':'gizzard','UNION|642320':'heart',
  'UNION|642321':'wings','UNION|642322':'tender breast',
- 'UNION|635709':'frozen chicken','UNION|635716':'frozen breast bl/sl',
+ 'UNION|635709':'frozen chicken','UNION|635716':'frozen breast bl/sl','UNION|665419':'french fries',
  'MLS|FS-00094':'chicken','MLS|FS-00004':'heart','MLS|FS-00089':'breast','MLS|FS-00090':'drumsticks',
  'MLS|FS-00092':'thigh','MLS|FS-00093':'wings'};
 // Union barcode -> Union item no (either one identifies the product)
@@ -751,6 +759,7 @@ async function addFiles(files){
         l.saved=!!names.products[l.key];l.short=names.products[l.key]||suggestForLine(l,r.source);
         const sz=String(l.desc).match(/\b(\d{3,4})\s*(G|GM|GMS|GR|GRAM|GRAMS)\b/i);
         l.size=sz&&/^(whole )?chicken$/i.test(l.short)?sz[1]:'';
+        if(/^(CT|CTN|CARTON)$/i.test(l.uom)&&l.pack>0){l.ctn=l.qty;l.qty=Math.round(l.qty*l.pack*1000)/1000;l.uom='KG'}   // cartons -> kg, keep the carton count
         l.frozen=base==='frozen chicken'?'whole':base==='frozen breast bl/sl'?'breast':'';
         frozenAdjust(l);
 });
@@ -836,6 +845,7 @@ function frozenAdjust(l){
   if(l.raw==null)l.raw=l.qty;
   const ctn=Math.floor(l.raw/carton+1e-9);
   l.qty=Math.round(ctn*carton*1000)/1000;
+  l.ctn=ctn;   // carton count is written after the kg
   l.extra=l.frozen==='whole'?val:val+'kg';
   l.fnote=`${l.raw} kg → ${ctn} carton${ctn===1?'':'s'} × ${carton} kg`+(ctn<1?' · less than one carton!':'');
 }
@@ -843,7 +853,7 @@ const unitOf=(u,src)=>/^KGS?$/.test(u)?((names.opts[src]||{}).kg??'kg'):/^(PCS|P
 function msg(r){
   const po=$('#withPo').checked;
   return [r.name.trim()+(po&&r.po?`\nPO ${r.po}`:''),'',
-    ...mergeLines(r.lines,r.source).map(l=>`${q2(l.qty)} ${unitOf(l.uom,r.source)?unitOf(l.uom,r.source)+' ':''}${l.short}`)].join('\n');
+    ...mergeLines(r.lines,r.source).map(l=>`${q2(l.qty)} ${unitOf(l.uom,r.source)?unitOf(l.uom,r.source)+' ':''}${l.short}${l.ctn?` (${q2(l.ctn)} ctn)`:''}`)].join('\n');
 }
 const isWhole=l=>/^(whole )?chicken$/i.test(String(l.short||'').trim());
 function sizeOpts(cur){
@@ -862,7 +872,7 @@ function markSaved(){document.querySelectorAll('.tag.check').forEach(t=>{t.class
 function mergeLines(ls,src){
   const m=new Map();
   ls.filter(l=>l.short.trim()&&l.qty>0).forEach(l=>{const name=l.short.trim()+(isWhole(l)&&l.size?' '+l.size:'')+(l.extra?' '+l.extra:'');const k=name+'|'+unitOf(l.uom,src);
-    if(m.has(k))m.get(k).qty+=l.qty;else m.set(k,{short:name,uom:l.uom,qty:l.qty})});
+    if(m.has(k)){m.get(k).qty+=l.qty;m.get(k).ctn+=(l.ctn||0)}else m.set(k,{short:name,uom:l.uom,qty:l.qty,ctn:l.ctn||0})});
   return[...m.values()];
 }
 function upd(){
